@@ -1,4 +1,17 @@
+// import type { Metadata } from "next";
+// import { SignupForm } from "./SignupForm";
+
+// export const metadata: Metadata = {
+//   title: "Create your account",
+//   robots: { index: false },
+// };
+
+// export default function SignupPage() {
+//   return <SignupForm />;
+// }
+
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { SignupForm } from "./SignupForm";
 
 export const metadata: Metadata = {
@@ -6,6 +19,18 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+function SignupFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <p className="text-sm text-ink/60">Loading signup form...</p>
+    </div>
+  );
+}
+
 export default function SignupPage() {
-  return <SignupForm />;
+  return (
+    <Suspense fallback={<SignupFallback />}>
+      <SignupForm />
+    </Suspense>
+  );
 }

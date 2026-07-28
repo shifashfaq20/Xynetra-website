@@ -522,7 +522,10 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
       try {
         const list = await listClients();
         setClients(list);
-        if (!list.find((c) => c.id === activeId)) setActiveId(list[0]?.id || null);
+        // if (!list.find((c) => c.id === activeId)) setActiveId(list[0]?.id || null);
+        if (!list.find((c: { id: string }) => c.id === activeId)) {
+  setActiveId(list[0]?.id || null);
+}
       } catch (e: any) {
         setNotice({ kind: "err", msg: e.message });
       }

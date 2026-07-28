@@ -120,12 +120,107 @@
 //   return supabaseResponse
 // }
 
-// src/lib/supabase/middleware.ts
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+
+
+
+// // src/lib/supabase/middleware.ts
+// import { createServerClient } from '@supabase/ssr'
+// import { NextResponse, type NextRequest } from 'next/server'
+
+// export async function updateSession(request: NextRequest) {
+//   let supabaseResponse = NextResponse.next({ request })
+
+//   const supabase = createServerClient(
+//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
+//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+//     {
+//       cookies: {
+//         getAll() {
+//           return request.cookies.getAll()
+//         },
+//         setAll(cookiesToSet) {
+//           cookiesToSet.forEach(({ name, value }) =>
+//             request.cookies.set(name, value)
+//           )
+//           supabaseResponse = NextResponse.next({ request })
+//           cookiesToSet.forEach(({ name, value, options }) =>
+//             supabaseResponse.cookies.set(name, value, options)
+//           )
+//         },
+//       },
+//     }
+//   )
+
+//   // Refresh the session — important: do NOT remove this
+//   const {
+//     data: { user },
+//   } = await supabase.auth.getUser()
+
+//   const path = request.nextUrl.pathname
+
+//   // 1) Not logged in → block /app and /onboarding, remember destination
+//   if (
+//     !user &&
+//     (path.startsWith('/app') || path.startsWith('/onboarding'))
+//   ) {
+//     const url = request.nextUrl.clone()
+//     url.pathname = '/login'
+//     url.searchParams.set('next', path)
+//     return NextResponse.redirect(url)
+//   }
+
+//   // 2) Logged in → enforce payment gate on /onboarding and /app
+//   //    (except /app/checkout and /app/billing which unpaid users need)
+//   if (
+//     user &&
+//     (path.startsWith('/onboarding') || path.startsWith('/app'))
+//   ) {
+//     const allowedWhenUnpaid =
+//       path.startsWith('/app/checkout') || path.startsWith('/app/billing')
+
+//     if (!allowedWhenUnpaid) {
+//       const { data: profile } = await supabase
+//         .from('profiles')
+//         .select('subscription_status')
+//         .eq('id', user.id)
+//         .single()
+
+//       if (profile?.subscription_status !== 'active') {
+//         const url = request.nextUrl.clone()
+//         url.pathname = '/app/checkout'
+//         return NextResponse.redirect(url)
+//       }
+//     }
+//   }
+
+//   // 3) Logged-in users shouldn't sit on login/signup
+//   if (
+//     user &&
+//     (path === '/login' || path === '/signup')
+//   ) {
+//     const url = request.nextUrl.clone()
+//     url.pathname = '/app/dashboard'
+//     return NextResponse.redirect(url)
+//   }
+
+//   return supabaseResponse
+// }
+
+
+
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+type CookieToSet = {
+  name: string;
+  value: string;
+  options?: CookieOptions;
+};
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({
+    request,
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -133,72 +228,76 @@ export async function updateSession(request: NextRequest) {
     {
       cookies: {
         getAll() {
-          return request.cookies.getAll()
+          return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach((cookie: CookieToSet) => {
+            request.cookies.set(cookie.name, cookie.value);
+          });
+
+          supabaseResponse = NextResponse.next({
+            request,
+          });
+
+          cookiesToSet.forEach((cookie: CookieToSet) => {
+            supabaseResponse.cookies.set(
+              cookie.name,
+              cookie.value,
+              cookie.options
+            );
+          });
         },
       },
     }
-  )
+  );
 
-  // Refresh the session — important: do NOT remove this
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname
+  const path = request.nextUrl.pathname;
 
-  // 1) Not logged in → block /app and /onboarding, remember destination
-  if (
-    !user &&
-    (path.startsWith('/app') || path.startsWith('/onboarding'))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    url.searchParams.set('next', path)
-    return NextResponse.redirect(url)
+  // Not logged in: block protected areas.
+  if (!user && (path.startsWith("/app") || path.startsWith("/onboarding"))) {
+    const url = request.nextUrl.clone();
+
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
+
+    return NextResponse.redirect(url);
   }
 
-  // 2) Logged in → enforce payment gate on /onboarding and /app
-  //    (except /app/checkout and /app/billing which unpaid users need)
-  if (
-    user &&
-    (path.startsWith('/onboarding') || path.startsWith('/app'))
-  ) {
+  // Logged-in but not paid: send to checkout.
+  if (user && (path.startsWith("/onboarding") || path.startsWith("/app"))) {
     const allowedWhenUnpaid =
-      path.startsWith('/app/checkout') || path.startsWith('/app/billing')
+      path.startsWith("/app/checkout") || path.startsWith("/app/billing");
 
     if (!allowedWhenUnpaid) {
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('subscription_status')
-        .eq('id', user.id)
-        .single()
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
 
-      if (profile?.subscription_status !== 'active') {
-        const url = request.nextUrl.clone()
-        url.pathname = '/app/checkout'
-        return NextResponse.redirect(url)
+      if (profile?.subscription_status !== "active") {
+        const url = request.nextUrl.clone();
+
+        url.pathname = "/app/checkout";
+
+        return NextResponse.redirect(url);
       }
     }
   }
 
-  // 3) Logged-in users shouldn't sit on login/signup
-  if (
-    user &&
-    (path === '/login' || path === '/signup')
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/app/dashboard'
-    return NextResponse.redirect(url)
+  // Logged-in users do not need login/signup pages.
+  if (user && (path === "/login" || path === "/signup")) {
+    const url = request.nextUrl.clone();
+
+    url.pathname = "/app/dashboard";
+
+    return NextResponse.redirect(url);
   }
 
-  return supabaseResponse
+  return supabaseResponse;
 }

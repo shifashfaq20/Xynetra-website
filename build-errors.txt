@@ -1,0 +1,29 @@
+
+> xynetra-website@1.0.0 build
+> next build
+
+   ▲ Next.js 15.1.6
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/28) ...
+   Generating static pages (7/28) 
+   Generating static pages (14/28) 
+   Generating static pages (21/28) 
+ ⨯ useSearchParams() should be wrapped in a suspense boundary at page "/signup". Read more: https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+    at a (/Users/macbook/Desktop/xynetra copy/website-2/.next/server/chunks/5933.js:1:6426)
+    at f (/Users/macbook/Desktop/xynetra copy/website-2/.next/server/chunks/5933.js:1:23022)
+    at d (/Users/macbook/Desktop/xynetra copy/website-2/.next/server/app/(auth)/signup/page.js:1:2991)
+    at nO (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:45959)
+    at nI (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:47734)
+    at nI (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:62515)
+    at nL (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:65533)
+    at nN (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:63164)
+    at nB (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:68946)
+    at nD (/Users/macbook/Desktop/xynetra copy/website-2/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js:20:67647)
+Error occurred prerendering page "/signup". Read more: https://nextjs.org/docs/messages/prerender-error
+Export encountered an error on /(auth)/signup/page: /signup, exiting the build.
+ ⨯ Static worker exited with code: 1 and signal: null

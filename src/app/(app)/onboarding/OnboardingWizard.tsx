@@ -206,7 +206,7 @@
 import { useState } from 'react'
 import { Step1BusinessDetails } from './steps/Step1BusinessDetails'
 import { Step2GoogleCalendar } from './steps/Step2GoogleCalendar'
-import { Step3ConnectWhatsApp } from './steps/Step3ConnectWhatsApp'
+import { Step3ConnectWhatsApp } from './steps/Step3ConnectWhatsapp'
 import { Step4BusinessHours } from './steps/Step4BusinessHours'
 import { Step5ReminderTiming } from './steps/Step5ReminderTiming'
 import { Step6Services } from './steps/Step6Services'
