@@ -337,9 +337,158 @@
 //   );
 // }
 
+// "use client";
+
+// import { useRef, useState, useEffect } from "react";
+// import { BookDemoButton } from "@/components/CtaButtons";
+// import { IconCheck } from "@/components/Icon";
+
+// const FRAMES = [
+//   "/video-keyframes/s1-060.png",
+//   "/video-keyframes/s1-175.png",
+//   "/video-keyframes/s1-175b.png",
+//   "/video-keyframes/s2-30.png",
+//   "/video-keyframes/s2-100.png",
+//   "/video-keyframes/s2-155.png",
+//   "/video-keyframes/s2-190.png",
+//   "/video-keyframes/s2-230.png",
+//   "/video-keyframes/s3-15.png",
+//   "/video-keyframes/s3-90.png",
+//   "/video-keyframes/s3-150.png",
+//   "/video-keyframes/s3-210.png",
+//   "/video-keyframes/s3-265.png",
+//   "/video-keyframes/s4-40.png",
+//   "/video-keyframes/s4-105.png",
+//   "/video-keyframes/s4-200.png",
+//   "/video-keyframes/s4-275.png",
+//   "/video-keyframes/s4-320.png",
+//   "/video-keyframes/s5-60.png",
+//   "/video-keyframes/s5-130.png",
+//   "/video-keyframes/s5-180.png",
+//   "/video-keyframes/s5-210.png",
+//   "/video-keyframes/s5-260.png",
+//   "/video-keyframes/s5-340.png",
+//   "/video-keyframes/s5-395.png",
+//   "/video-keyframes/s5b-60.png",
+//   "/video-keyframes/s5b-180.png",
+//   "/video-keyframes/s5b-300.png",
+//   "/video-keyframes/s5b-360.png",
+//   "/video-keyframes/s5b-440.png",
+//   "/video-keyframes/s5b-540.png",
+//   "/video-keyframes/s5b-640.png",
+//   "/video-keyframes/s5b-700.png",
+//   "/video-keyframes/s6-50.png",
+//   "/video-keyframes/s6-100.png",
+//   "/video-keyframes/s6-165.png",
+//   "/video-keyframes/s6-235.png",
+//   "/video-keyframes/s6-285.png",
+//   "/video-keyframes/s6-325.png",
+//   "/video-keyframes/s7-50.png",
+//   "/video-keyframes/s7-120.png",
+//   "/video-keyframes/s7-200.png",
+// ];
+
+// export default function DemoVideo() {
+//   const sectionRef = useRef<HTMLDivElement>(null);
+//   const [inView, setInView] = useState(false);
+//   const [frameIndex, setFrameIndex] = useState(0);
+//   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+//   // Auto-start when scrolled into view
+//   useEffect(() => {
+//     const el = sectionRef.current;
+//     if (!el) return;
+
+//     const observer = new IntersectionObserver(
+//       ([entry]) => {
+//         if (entry.isIntersecting) {
+//           setInView(true);
+//           observer.disconnect();
+//         }
+//       },
+//       { rootMargin: "150px" }
+//     );
+
+//     observer.observe(el);
+//     return () => observer.disconnect();
+//   }, []);
+
+//   // Preload images once in view
+//   useEffect(() => {
+//     if (!inView) return;
+//     FRAMES.forEach((src) => {
+//       const img = new Image();
+//       img.src = src;
+//     });
+//   }, [inView]);
+
+//   // Auto-play loop (no click needed)
+//   useEffect(() => {
+//     if (!inView) return;
+
+//     intervalRef.current = setInterval(() => {
+//       setFrameIndex((prev) => (prev + 1) % FRAMES.length);
+//     }, 45); // ~22 fps
+
+//     return () => {
+//       if (intervalRef.current) clearInterval(intervalRef.current);
+//     };
+//   }, [inView]);
+
+//   return (
+//     <section id="demo" className="overflow-hidden bg-ink text-paper">
+//       <div className="container-x py-16 sm:py-24">
+//         <div className="mx-auto max-w-2xl text-center">
+//           <span className="eyebrow text-purple">See it work</span>
+//           <h2 className="h2 mt-4 text-paper">
+//             Watch Xynetra recover revenue in real time.
+//           </h2>
+//           <p className="body-lg mt-5 text-paper/75">
+//             Ninety seconds, end to end: a missed call becomes a confirmed
+//             booking, a reminder goes out on its own, and a cancelled slot gets
+//             refilled — while the dashboard counts the money back.
+//           </p>
+//         </div>
+
+//         {/* Cinematic frame — starts automatically */}
+//         <div
+//           ref={sectionRef}
+//           className="relative mx-auto mt-12 max-w-5xl border border-paper/15 ring-1 ring-paper/10 bg-black overflow-hidden"
+//         >
+//           <div className="aspect-video w-full">
+//             <img
+//               src={FRAMES[frameIndex]}
+//               alt="Xynetra demo animation"
+//               className="w-full h-full object-contain bg-black"
+//             />
+//           </div>
+//         </div>
+
+//         {/* Trust row */}
+//         <div className="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-paper/60">
+//           <span className="inline-flex items-center gap-2">
+//             <IconCheck size={16} className="text-purple" /> No signup required
+//           </span>
+//           <span className="inline-flex items-center gap-2">
+//             <IconCheck size={16} className="text-purple" /> 90-second tour
+//           </span>
+//           <span className="inline-flex items-center gap-2">
+//             <IconCheck size={16} className="text-purple" /> Real workflow, no
+//             slides
+//           </span>
+//         </div>
+
+//         <div className="mt-9 flex justify-center">
+//           <BookDemoButton variant="reversed" />
+//         </div>
+//       </div>
+//     </section>
+//   );
+// }
+
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BookDemoButton } from "@/components/CtaButtons";
 import { IconCheck } from "@/components/Icon";
 
@@ -389,60 +538,30 @@ const FRAMES = [
 ];
 
 export default function DemoVideo() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-  const [frameIndex, setFrameIndex] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [frame, setFrame] = useState(0);
 
-  // Auto-start when scrolled into view
+  // Change image every 600ms — clearly visible, slight hold
   useEffect(() => {
-    const el = sectionRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "150px" }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
+    const timer = setInterval(() => {
+      setFrame((prev) => (prev + 1) % FRAMES.length);
+    }, 600);
+    return () => clearInterval(timer);
   }, []);
 
-  // Preload images once in view
+  // Preload so they don't flicker blank
   useEffect(() => {
-    if (!inView) return;
     FRAMES.forEach((src) => {
       const img = new Image();
       img.src = src;
     });
-  }, [inView]);
-
-  // Auto-play loop (no click needed)
-  useEffect(() => {
-    if (!inView) return;
-
-    intervalRef.current = setInterval(() => {
-      setFrameIndex((prev) => (prev + 1) % FRAMES.length);
-    }, 45); // ~22 fps
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [inView]);
+  }, []);
 
   return (
     <section id="demo" className="overflow-hidden bg-ink text-paper">
       <div className="container-x py-16 sm:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <span className="eyebrow text-purple">See it work</span>
-          <h2 className="h2 mt-4 text-paper">
-            Watch Xynetra recover revenue in real time.
-          </h2>
+          <h2 className="h2 mt-4 text-paper">Watch Xynetra recover revenue in real time.</h2>
           <p className="body-lg mt-5 text-paper/75">
             Ninety seconds, end to end: a missed call becomes a confirmed
             booking, a reminder goes out on its own, and a cancelled slot gets
@@ -450,21 +569,17 @@ export default function DemoVideo() {
           </p>
         </div>
 
-        {/* Cinematic frame — starts automatically */}
-        <div
-          ref={sectionRef}
-          className="relative mx-auto mt-12 max-w-5xl border border-paper/15 ring-1 ring-paper/10 bg-black overflow-hidden"
-        >
+        {/* Only ONE image shown at a time */}
+        <div className="mx-auto mt-12 max-w-5xl border border-paper/15 ring-1 ring-paper/10 bg-neutral-950 overflow-hidden">
           <div className="aspect-video w-full">
             <img
-              src={FRAMES[frameIndex]}
-              alt="Xynetra demo animation"
-              className="w-full h-full object-contain bg-black"
+              src={FRAMES[frame]}
+              alt={`Frame ${frame + 1}`}
+              className="w-full h-full object-contain bg-neutral-900 block transition-opacity duration-300"
             />
           </div>
         </div>
 
-        {/* Trust row */}
         <div className="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-paper/60">
           <span className="inline-flex items-center gap-2">
             <IconCheck size={16} className="text-purple" /> No signup required
@@ -473,8 +588,7 @@ export default function DemoVideo() {
             <IconCheck size={16} className="text-purple" /> 90-second tour
           </span>
           <span className="inline-flex items-center gap-2">
-            <IconCheck size={16} className="text-purple" /> Real workflow, no
-            slides
+            <IconCheck size={16} className="text-purple" /> Real workflow, no slides
           </span>
         </div>
 
