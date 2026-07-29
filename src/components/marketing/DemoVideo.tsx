@@ -486,98 +486,44 @@
 //   );
 // }
 
+
 "use client";
 
-import { useEffect, useState } from "react";
 import { BookDemoButton } from "@/components/CtaButtons";
 import { IconCheck } from "@/components/Icon";
 
-const FRAMES = [
-  "/video-keyframes/s1-060.png",
-  "/video-keyframes/s1-175.png",
-  "/video-keyframes/s1-175b.png",
-  "/video-keyframes/s2-30.png",
-  "/video-keyframes/s2-100.png",
-  "/video-keyframes/s2-155.png",
-  "/video-keyframes/s2-190.png",
-  "/video-keyframes/s2-230.png",
-  "/video-keyframes/s3-15.png",
-  "/video-keyframes/s3-90.png",
-  "/video-keyframes/s3-150.png",
-  "/video-keyframes/s3-210.png",
-  "/video-keyframes/s3-265.png",
-  "/video-keyframes/s4-40.png",
-  "/video-keyframes/s4-105.png",
-  "/video-keyframes/s4-200.png",
-  "/video-keyframes/s4-275.png",
-  "/video-keyframes/s4-320.png",
-  "/video-keyframes/s5-60.png",
-  "/video-keyframes/s5-130.png",
-  "/video-keyframes/s5-180.png",
-  "/video-keyframes/s5-210.png",
-  "/video-keyframes/s5-260.png",
-  "/video-keyframes/s5-340.png",
-  "/video-keyframes/s5-395.png",
-  "/video-keyframes/s5b-60.png",
-  "/video-keyframes/s5b-180.png",
-  "/video-keyframes/s5b-300.png",
-  "/video-keyframes/s5b-360.png",
-  "/video-keyframes/s5b-440.png",
-  "/video-keyframes/s5b-540.png",
-  "/video-keyframes/s5b-640.png",
-  "/video-keyframes/s5b-700.png",
-  "/video-keyframes/s6-50.png",
-  "/video-keyframes/s6-100.png",
-  "/video-keyframes/s6-165.png",
-  "/video-keyframes/s6-235.png",
-  "/video-keyframes/s6-285.png",
-  "/video-keyframes/s6-325.png",
-  "/video-keyframes/s7-50.png",
-  "/video-keyframes/s7-120.png",
-  "/video-keyframes/s7-200.png",
-];
+// ⬇️ REPLACE THIS WITH YOUR REAL GOOGLE DRIVE LINK
+const DRIVE_LINK = "https://drive.google.com/drive/folders/1tOUEa--bs00zaK_H4yp4x5ReRtMTR-qy?usp=drive_link";
 
 export default function DemoVideo() {
-  const [frame, setFrame] = useState(0);
-
-  // Change image every 600ms — clearly visible, slight hold
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFrame((prev) => (prev + 1) % FRAMES.length);
-    }, 600);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Preload so they don't flicker blank
-  useEffect(() => {
-    FRAMES.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-  }, []);
-
   return (
     <section id="demo" className="overflow-hidden bg-ink text-paper">
       <div className="container-x py-16 sm:py-24">
         <div className="mx-auto max-w-2xl text-center">
           <span className="eyebrow text-purple">See it work</span>
-          <h2 className="h2 mt-4 text-paper">Watch Xynetra recover revenue in real time.</h2>
+          <h2 className="h2 mt-4 text-paper">
+            Watch Xynetra recover revenue in real time.
+          </h2>
           <p className="body-lg mt-5 text-paper/75">
-            Ninety seconds, end to end: a missed call becomes a confirmed
-            booking, a reminder goes out on its own, and a cancelled slot gets
-            refilled — while the dashboard counts the money back.
+            Ninety seconds, end to end. Click below to watch on Google Drive.
           </p>
         </div>
 
-        {/* Only ONE image shown at a time */}
-        <div className="mx-auto mt-12 max-w-5xl border border-paper/15 ring-1 ring-paper/10 bg-neutral-950 overflow-hidden">
-          <div className="aspect-video w-full">
-            <img
-              src={FRAMES[frame]}
-              alt={`Frame ${frame + 1}`}
-              className="w-full h-full object-contain bg-neutral-900 block transition-opacity duration-300"
-            />
-          </div>
+        {/* Google Drive link only */}
+        <div className="mx-auto mt-12 max-w-md text-center">
+          <a
+            href={DRIVE_LINK}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-3 rounded-full bg-purple px-8 py-4 text-base font-semibold text-paper shadow-lg transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            Watch Demo Video
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="14 2 22 10 16 10" />
+              <line x1="22" y1="10" x2="22" y2="2" />
+            </svg>
+          </a>
         </div>
 
         <div className="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-paper/60">
