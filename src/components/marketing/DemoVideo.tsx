@@ -337,14 +337,12 @@
 //   );
 // }
 
-
 "use client";
 
 import { useRef, useState, useEffect } from "react";
 import { BookDemoButton } from "@/components/CtaButtons";
 import { IconCheck } from "@/components/Icon";
 
-// All keyframes in display order
 const FRAMES = [
   "/video-keyframes/s1-060.png",
   "/video-keyframes/s1-175.png",
@@ -392,13 +390,11 @@ const FRAMES = [
 
 export default function DemoVideo() {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [started, setStarted] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [inView, setInView] = useState(false);
   const [frameIndex, setFrameIndex] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Lazy load: detect when section is near viewport
+  // Auto-start when scrolled into view
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -410,39 +406,34 @@ export default function DemoVideo() {
           observer.disconnect();
         }
       },
-      { rootMargin: "200px" }
+      { rootMargin: "150px" }
     );
 
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  // Preload frames quickly once in view
+  // Preload images once in view
   useEffect(() => {
     if (!inView) return;
     FRAMES.forEach((src) => {
       const img = new Image();
       img.src = src;
     });
-    // Small artificial delay so spinner feels real
-    const t = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(t);
   }, [inView]);
 
-  // Frame loop at ~24fps once started
+  // Auto-play loop (no click needed)
   useEffect(() => {
-    if (!started || !inView) return;
+    if (!inView) return;
+
     intervalRef.current = setInterval(() => {
       setFrameIndex((prev) => (prev + 1) % FRAMES.length);
-    }, 42); // ~24 fps
+    }, 45); // ~22 fps
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [started, inView]);
-
-  const handlePlay = () => {
-    setStarted(true);
-  };
+  }, [inView]);
 
   return (
     <section id="demo" className="overflow-hidden bg-ink text-paper">
@@ -459,53 +450,18 @@ export default function DemoVideo() {
           </p>
         </div>
 
-        {/* Cinematic frame */}
+        {/* Cinematic frame — starts automatically */}
         <div
           ref={sectionRef}
           className="relative mx-auto mt-12 max-w-5xl border border-paper/15 ring-1 ring-paper/10 bg-black overflow-hidden"
         >
-          {inView ? (
-            <div className="aspect-video w-full relative">
-              <img
-                src={FRAMES[frameIndex]}
-                alt="Demo animation"
-                className="w-full h-full object-contain bg-black"
-                loading={frameIndex === 0 ? "eager" : "lazy"}
-              />
-
-              {/* Loading spinner */}
-              {loading && (
-                <div className="absolute inset-0 grid place-items-center bg-ink/80 z-10">
-                  <div className="h-12 w-12 animate-spin rounded-full border-4 border-purple border-t-transparent" />
-                </div>
-              )}
-
-              {/* Click-to-play overlay */}
-              {!started && !loading && (
-                <button
-                  type="button"
-                  onClick={handlePlay}
-                  aria-label="Play demo animation"
-                  className="group absolute inset-0 grid place-items-center bg-ink/30 transition-colors hover:bg-ink/40 z-20"
-                >
-                  <span className="grid h-16 w-16 place-items-center rounded-full bg-purple text-paper shadow-lg transition-transform group-hover:scale-105 sm:h-20 sm:w-20">
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="ml-1 h-7 w-7 sm:h-8 sm:w-8"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="aspect-video w-full bg-black flex items-center justify-center">
-              <span className="text-paper/40 text-sm">Loading demo...</span>
-            </div>
-          )}
+          <div className="aspect-video w-full">
+            <img
+              src={FRAMES[frameIndex]}
+              alt="Xynetra demo animation"
+              className="w-full h-full object-contain bg-black"
+            />
+          </div>
         </div>
 
         {/* Trust row */}
