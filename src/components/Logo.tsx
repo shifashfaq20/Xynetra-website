@@ -154,7 +154,7 @@ type Variant = "primary" | "reversed";
 export function Logo({
   variant = "primary",
   className = "",
-  width = 75,
+  width = 65,
   href = "/",
   priority = false,
 }: {
