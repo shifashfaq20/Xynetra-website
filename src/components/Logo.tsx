@@ -145,6 +145,7 @@
 // }
 
 
+
 import Image from "next/image";
 import Link from "next/link";
 
@@ -178,13 +179,19 @@ export function Logo({
       height={logoHeight}
       priority={priority}
       className={className}
-      style={{ width, height: logoHeight, marginTop: 4, verticalAlign: "middle" }}
+      style={{ width, height: logoHeight }}
     />
   );
 
   if (href === null) return img;
+  
+  // flex + items-center puts it exactly in the middle of the navbar row
   return (
-    <Link href={href} aria-label="Xynetra home" className="inline-flex items-center">
+    <Link 
+      href={href} 
+      aria-label="Xynetra home" 
+      className="inline-flex items-center h-full"
+    >
       {img}
     </Link>
   );
@@ -209,8 +216,7 @@ export function XMark({
       alt="Xynetra"
       width={size}
       height={size}
-      className={className}
-      style={{ verticalAlign: "middle" }}
+      className={`inline-flex items-center ${className}`}
     />
   );
 }
