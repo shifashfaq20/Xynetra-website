@@ -145,7 +145,6 @@
 // }
 
 
-
 import Image from "next/image";
 import Link from "next/link";
 
@@ -154,7 +153,7 @@ type Variant = "primary" | "reversed";
 export function Logo({
   variant = "primary",
   className = "",
-  width = 110,
+  width = 90,
   href = "/",
   priority = false,
 }: {
@@ -169,6 +168,7 @@ export function Logo({
       ? "/brand/logo/xynetra-logo-reversed.svg"
       : "/brand/logo/xynetra-logo-primary.svg";
 
+  // Slightly smaller so padding fits nicely inside navbar
   const logoHeight = Math.round(width * 0.6);
 
   const img = (
@@ -179,18 +179,18 @@ export function Logo({
       height={logoHeight}
       priority={priority}
       className={className}
-      style={{ width, height: logoHeight }}
+      style={{ width, height: logoHeight, display: "block" }}
     />
   );
 
   if (href === null) return img;
-  
-  // flex + items-center puts it exactly in the middle of the navbar row
+
+  // py-2 = equal 8px space top & bottom, never touches header edges
   return (
-    <Link 
-      href={href} 
-      aria-label="Xynetra home" 
-      className="inline-flex items-center h-full"
+    <Link
+      href={href}
+      aria-label="Xynetra home"
+      className="inline-flex items-center py-2"
     >
       {img}
     </Link>
@@ -217,6 +217,7 @@ export function XMark({
       width={size}
       height={size}
       className={`inline-flex items-center ${className}`}
+      style={{ display: "block" }}
     />
   );
 }
