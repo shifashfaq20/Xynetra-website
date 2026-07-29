@@ -198,7 +198,7 @@ import { BookDemoButton } from "@/components/CtaButtons";
 import { IconCheck } from "@/components/Icon";
 
 // ✅ Using local compressed video from /public/videos/demo.mp4
-const DEMO_SRC = "/videos/demo.mp4";
+const DEMO_SRC = "/videos/demo-2.mp4";
 const DEMO_POSTER = "/videos/demo-poster.jpg";
 
 export default function DemoVideo() {
