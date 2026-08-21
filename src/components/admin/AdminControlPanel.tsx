@@ -1291,7 +1291,6 @@
 
 
 
-
 // src/components/admin/AdminControlPanel.tsx
 "use client";
 
@@ -1401,16 +1400,9 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
           reload();
           if (res.userId) setActiveId(res.userId);
         } else {
-          // GUARD: never show raw "{}"
-          console.error("FULL CREATE RESPONSE:", res);
-          let msg = res?.message || "Account creation failed.";
-          if (!msg || msg === "{}" || msg === "[object Object]" || msg === "undefined" || msg === "") {
-            msg = "Supabase returned empty error — usually: DUPLICATE EMAIL, missing SUPABASE_SERVICE_ROLE_KEY, or auth not configured. Check your .env.local and server terminal.";
-          }
-          setNotice({ kind: "err", msg: msg });
+          setNotice({ kind: "err", msg: res.message });
         }
       } catch (e: any) {
-        console.error("CATCH ERROR:", e);
         setNotice({ kind: "err", msg: e.message || "Something went wrong." });
       }
     });
@@ -1445,6 +1437,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
         </div>
       )}
 
+      {/* Context switcher */}
       <div className="rounded-2xl border border-grey-line bg-paper p-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
@@ -1481,6 +1474,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
         </div>
       </div>
 
+      {/* Hero */}
       <div className="rounded-2xl bg-[#0d1224] p-7 text-paper flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-xl">
           <div className="flex items-center gap-3">
@@ -1517,6 +1511,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
         </div>
       </div>
 
+      {/* Simulation */}
       {showSim && (
         <div className="rounded-2xl border border-grey-line bg-paper p-6">
           <div className="flex items-center gap-2">
@@ -1535,6 +1530,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
         </div>
       )}
 
+      {/* Add client */}
       {showAdd && (
         <form onSubmit={onAddClient} className="rounded-2xl border border-grey-line bg-paper p-6 space-y-4">
           <div className="flex items-center gap-2">
@@ -1566,6 +1562,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
         </form>
       )}
 
+      {/* Clients list */}
       <div id="clients-list" className="rounded-2xl border border-grey-line bg-paper">
         <div className="flex items-center justify-between border-b border-grey-line p-5">
           <div className="flex items-center gap-2">
@@ -1577,7 +1574,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
 
         {clients.length === 0 ? (
           <div className="p-10 text-center font-body text-sm text-ink/50">
-            No clients yet. Use "Add New Client" to create the first one.
+            No clients yet. Use “Add New Client” to create the first one.
           </div>
         ) : (
           clients.map((c) => {
@@ -1630,6 +1627,7 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
         )}
       </div>
 
+      {/* Configure */}
       {active && (
         <div className="rounded-2xl border border-grey-line bg-paper p-6 space-y-5">
           <div className="flex items-center gap-2">

@@ -1619,6 +1619,9 @@
 // }
 
 
+
+
+// src/lib/admin/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -1789,12 +1792,13 @@ export async function createClientAccount(input: {
   try {
     await requireAdmin();
 
+    // ── CONFIGURATION CHECK (Crucial for live servers) ──
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !serviceKey) {
       return {
         success: false,
-        message: "Configuration Error: SUPABASE_SERVICE_ROLE_KEY is missing.",
+        message: "Configuration Error: SUPABASE_SERVICE_ROLE_KEY is missing on your hosting platform environment variables."
       };
     }
 
@@ -1803,7 +1807,7 @@ export async function createClientAccount(input: {
     const { data, error } = await svc.auth.admin.createUser({
       email: input.email,
       password: input.password,
-      email_confirm: false,
+      email_confirm: true,
       user_metadata: {
         full_name: input.business_name,
         business_name: input.business_name,
@@ -1812,76 +1816,27 @@ export async function createClientAccount(input: {
     });
 
     if (error) {
-      // NEVER output raw {} — log everything to server terminal
-      console.error("DEBUG ADMIN ERROR OBJECT:", error);
-      console.error("DEBUG ERROR TYPE:", typeof error);
-      console.error("DEBUG ERROR OWN KEYS:", Object.getOwnPropertyNames(error || {}));
+      return { success: false, message: `Supabase Auth Error: ${error.message}` };
+    }
 
-      const raw = error as any;
-      let msg = "";
+    if (data.user) {
+      const { error: profileError } = await svc
+        .from("profiles")
+        .update({
+          subscription_status: "active",
+          plan: "pro",
+        })
+        .eq("id", data.user.id);
 
-      if (typeof raw === "string") msg = raw;
-      else if (raw && typeof raw.message === "string" && raw.message) msg = raw.message;
-      else if (raw && typeof raw.msg === "string" && raw.msg) msg = raw.msg;
-      else if (raw && typeof raw.error_description === "string" && raw.error_description) msg = raw.error_description;
-      else {
-        try { msg = String(raw); } catch { msg = ""; }
-        if (!msg || msg === "[object Object]" || msg === "{}") {
-          msg = "Supabase Auth error (empty/hidden error object). Usually means: duplicate email, invalid service key, or user already exists.";
-        }
+      if (profileError) {
+        console.warn("Profile setup bypassed: ", profileError.message);
       }
-
-      return { success: false, message: `Supabase Auth Error: ${msg}` };
     }
-
-    if (!data.user) {
-      return { success: false, message: "User creation returned no user." };
-    }
-
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://xynetra.com";
-    const { error: inviteError } = await svc.auth.admin.inviteUserByEmail(
-      input.email,
-      { redirectTo: `${siteUrl}/auth/callback` }
-    );
-
-    if (inviteError) {
-      console.warn("User created, but invite email failed:", inviteError.message);
-    }
-
-    await svc.from("profiles").upsert(
-      {
-        id: data.user.id,
-        email: input.email,
-        business_name: input.business_name,
-        full_name: input.business_name,
-        billing_region: input.billing_region,
-        subscription_status: "active",
-        plan: "pro",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
-
-    await svc.from("clients").upsert(
-      {
-        id: data.user.id,
-        subscription_status: "active",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
 
     revalidatePath("/app/dashboard");
-    return {
-      success: true,
-      message: `Account for ${input.email} created! A confirmation email has been sent.`,
-      userId: data.user.id,
-    };
+    return { success: true, message: `Account for ${input.email} created successfully!`, userId: data.user?.id };
   } catch (err: any) {
-    return {
-      success: false,
-      message: err?.message || "An unexpected error occurred.",
-    };
+    return { success: false, message: err.message || "An unexpected error occurred." };
   }
 }
 
