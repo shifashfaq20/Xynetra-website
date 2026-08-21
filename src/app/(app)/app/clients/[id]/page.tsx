@@ -74,13 +74,12 @@
 // }
 
 
-
 // src/app/(app)/app/clients/[id]/page.tsx
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createServiceClient } from "@/lib/supabase/service"; // <-- FIXED PATH HERE
+import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin, getAdminStatsForClient } from "@/lib/admin/actions";
-import { StatsCards } from "@/components/dashbaord/StatsCards"; // <-- MATCHED YOUR FOLDER SPELLING
+import { StatsCards } from "@/components/dashbaord/StatsCards";
 import { UpcomingAppointments } from "@/components/dashbaord/UpcomingAppointments";
 import { WaitlistManager } from "@/components/dashbaord/WaitlistManager";
 import { ActivityFeed } from "@/components/dashbaord/ActivityFeed";
@@ -105,7 +104,6 @@ export default async function ClientPreviewPage({ params }: PageProps) {
 
   if (!profile) notFound();
 
-  // Safely get authentication account details from admin payload
   const { data: authUser } = await svc.auth.admin.getUserById(id);
   const email = authUser?.user?.email || "—";
 
