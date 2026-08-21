@@ -869,6 +869,8 @@
 
 
 
+
+
 // src/components/admin/AdminControlPanel.tsx
 "use client";
 
@@ -929,11 +931,11 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
       try {
         const list = await listClients();
         setClients(list);
-        if (!list.find((c) => c.id === activeId)) {
+        if (!list.find((c: { id: string }) => c.id === activeId)) {
           setActiveId(list[0]?.id || null);
         }
       } catch (e: any) {
-        setNotice({ kind: "err", msg: e.message || "An error occurred listing accounts" });
+        setNotice({ kind: "err", msg: e.message || "An error occurred listing accounts." });
       }
     });
 
@@ -942,12 +944,17 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
     setNotice(null);
     start(async () => {
       try {
-        await updateClientSettings(active.id, { billing_region: region, subscription_status: status });
-        await setClientPhoneNumberId(active.id, phoneNumberId.trim() || null);
-        setNotice({ kind: "ok", msg: `Saved settings for ${active.business_name}.` });
-        reload();
+        const res1 = await updateClientSettings(active.id, { billing_region: region, subscription_status: status });
+        const res2 = await setClientPhoneNumberId(active.id, phoneNumberId.trim() || null);
+        
+        if (res1.success && res2.success) {
+          setNotice({ kind: "ok", msg: `Saved settings for ${active.business_name}.` });
+          reload();
+        } else {
+          setNotice({ kind: "err", msg: res1.message || res2.message || "Failed to save settings." });
+        }
       } catch (e: any) {
-        setNotice({ kind: "err", msg: e.message });
+        setNotice({ kind: "err", msg: e.message || "Something went wrong." });
       }
     });
   };
@@ -963,15 +970,20 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
           business_name: newBiz.trim(),
           billing_region: newRegion,
         });
-        setNotice({ kind: "ok", msg: `Created ${newEmail}. They can log in now.` });
-        setNewEmail("");
-        setNewBiz("");
-        setNewPass(genPassword());
-        setShowAdd(false);
-        reload();
-        if (res.userId) setActiveId(res.userId);
+        
+        if (res.success) {
+          setNotice({ kind: "ok", msg: res.message });
+          setNewEmail("");
+          setNewBiz("");
+          setNewPass(genPassword());
+          setShowAdd(false);
+          reload();
+          if (res.userId) setActiveId(res.userId);
+        } else {
+          setNotice({ kind: "err", msg: res.message });
+        }
       } catch (e: any) {
-        setNotice({ kind: "err", msg: e.message });
+        setNotice({ kind: "err", msg: e.message || "Something went wrong." });
       }
     });
   };
@@ -981,10 +993,14 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
     setNotice(null);
     start(async () => {
       try {
-        await runSimulationForClient(active.id);
-        setNotice({ kind: "ok", msg: `Simulation data written for ${active.business_name}.` });
+        const res = await runSimulationForClient(active.id);
+        if (res.success) {
+          setNotice({ kind: "ok", msg: res.message });
+        } else {
+          setNotice({ kind: "err", msg: res.message });
+        }
       } catch (e: any) {
-        setNotice({ kind: "err", msg: e.message });
+        setNotice({ kind: "err", msg: e.message || "Simulation failed." });
       }
     });
   };
