@@ -1619,8 +1619,6 @@
 // }
 
 
-
-// src/lib/admin/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -1796,13 +1794,13 @@ export async function createClientAccount(input: {
     if (!url || !serviceKey) {
       return {
         success: false,
-        message: "Configuration Error: SUPABASE_SERVICE_ROLE_KEY is missing."
+        message: "Configuration Error: SUPABASE_SERVICE_ROLE_KEY is missing.",
       };
     }
 
     const svc = createServiceClient();
 
-    // Create the user but DO NOT auto-confirm their email so they get the confirmation email flow
+    // Create user (do NOT auto-confirm so they get confirmation email flow)
     const { data, error } = await svc.auth.admin.createUser({
       email: input.email,
       password: input.password,
@@ -1815,40 +1813,66 @@ export async function createClientAccount(input: {
     });
 
     if (error) {
-      return { success: false, message: `Supabase Auth Error: ${error.message}` };
+      // FIX: never show raw {} again
+      const raw = error as any;
+      const msg =
+        raw?.message ||
+        raw?.msg ||
+        (typeof raw === "string" ? raw : JSON.stringify(raw));
+      return { success: false, message: `Supabase Auth Error: ${msg}` };
     }
 
-    // Trigger confirmation email
-    const { error: inviteError } = await svc.auth.admin.inviteUserByEmail(input.email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://xynetra.com'}/auth/callback`
-    });
+    if (!data.user) {
+      return { success: false, message: "User creation returned no user." };
+    }
+
+    // Send confirmation / invitation email
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://xynetra.com";
+    const { error: inviteError } = await svc.auth.admin.inviteUserByEmail(
+      input.email,
+      { redirectTo: `${siteUrl}/auth/callback` }
+    );
 
     if (inviteError) {
-      console.warn("User created, but invite email failed: ", inviteError.message);
+      console.warn("User created, but invite email failed:", inviteError.message);
     }
 
-    if (data.user) {
-      const { error: profileError } = await svc
-        .from("profiles")
-        .update({
-          subscription_status: "active",
-          plan: "pro",
-        })
-        .eq("id", data.user.id);
+    // FIX: upsert profile so missing rows aren't a silent failure
+    await svc.from("profiles").upsert(
+      {
+        id: data.user.id,
+        email: input.email,
+        business_name: input.business_name,
+        full_name: input.business_name,
+        billing_region: input.billing_region,
+        subscription_status: "active",
+        plan: "pro",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
-      if (profileError) {
-        console.warn("Profile setup bypassed: ", profileError.message);
-      }
-    }
+    // FIX: ensure clients row exists too
+    await svc.from("clients").upsert(
+      {
+        id: data.user.id,
+        subscription_status: "active",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
 
     revalidatePath("/app/dashboard");
-    return { 
-      success: true, 
-      message: `Account for ${input.email} created! A confirmation email has been sent to them.`,
-      userId: data.user?.id 
+    return {
+      success: true,
+      message: `Account for ${input.email} created! A confirmation email has been sent.`,
+      userId: data.user.id,
     };
   } catch (err: any) {
-    return { success: false, message: err.message || "An unexpected error occurred." };
+    return {
+      success: false,
+      message: err?.message || "An unexpected error occurred.",
+    };
   }
 }
 
