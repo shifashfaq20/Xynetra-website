@@ -1800,7 +1800,6 @@ export async function createClientAccount(input: {
 
     const svc = createServiceClient();
 
-    // Create user (do NOT auto-confirm so they get confirmation email flow)
     const { data, error } = await svc.auth.admin.createUser({
       email: input.email,
       password: input.password,
@@ -1813,12 +1812,25 @@ export async function createClientAccount(input: {
     });
 
     if (error) {
-      // FIX: never show raw {} again
+      // NEVER output raw {} — log everything to server terminal
+      console.error("DEBUG ADMIN ERROR OBJECT:", error);
+      console.error("DEBUG ERROR TYPE:", typeof error);
+      console.error("DEBUG ERROR OWN KEYS:", Object.getOwnPropertyNames(error || {}));
+
       const raw = error as any;
-      const msg =
-        raw?.message ||
-        raw?.msg ||
-        (typeof raw === "string" ? raw : JSON.stringify(raw));
+      let msg = "";
+
+      if (typeof raw === "string") msg = raw;
+      else if (raw && typeof raw.message === "string" && raw.message) msg = raw.message;
+      else if (raw && typeof raw.msg === "string" && raw.msg) msg = raw.msg;
+      else if (raw && typeof raw.error_description === "string" && raw.error_description) msg = raw.error_description;
+      else {
+        try { msg = String(raw); } catch { msg = ""; }
+        if (!msg || msg === "[object Object]" || msg === "{}") {
+          msg = "Supabase Auth error (empty/hidden error object). Usually means: duplicate email, invalid service key, or user already exists.";
+        }
+      }
+
       return { success: false, message: `Supabase Auth Error: ${msg}` };
     }
 
@@ -1826,7 +1838,6 @@ export async function createClientAccount(input: {
       return { success: false, message: "User creation returned no user." };
     }
 
-    // Send confirmation / invitation email
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://xynetra.com";
     const { error: inviteError } = await svc.auth.admin.inviteUserByEmail(
       input.email,
@@ -1837,7 +1848,6 @@ export async function createClientAccount(input: {
       console.warn("User created, but invite email failed:", inviteError.message);
     }
 
-    // FIX: upsert profile so missing rows aren't a silent failure
     await svc.from("profiles").upsert(
       {
         id: data.user.id,
@@ -1852,7 +1862,6 @@ export async function createClientAccount(input: {
       { onConflict: "id" }
     );
 
-    // FIX: ensure clients row exists too
     await svc.from("clients").upsert(
       {
         id: data.user.id,
