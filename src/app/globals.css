@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-space-grotesk: "Space Grotesk", Arial, sans-serif;
+  --font-inter: "Inter", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    /* Backgrounds only Paper or Ink; body text always Ink. */
+    @apply bg-paper text-ink font-body antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display;
+  }
+  ::selection {
+    background: #763aa5;
+    color: #fff;
+  }
+}
+
+@layer components {
+  /* Eyebrow label — all caps, +20% tracking (brand book p.13) */
+  .eyebrow {
+    @apply font-display text-xs font-medium uppercase tracking-eyebrow;
+  }
+
+  /* H1 — Space Grotesk Bold, tight tracking */
+  .h1 {
+    @apply font-display font-bold tracking-tightest leading-[1.05] text-4xl sm:text-5xl lg:text-6xl;
+  }
+  .h2 {
+    @apply font-display font-medium tracking-tight leading-[1.1] text-3xl sm:text-4xl;
+  }
+  .h3 {
+    @apply font-display font-bold tracking-tight text-xl sm:text-2xl;
+  }
+
+  /* Body — Inter, 1.5 line height */
+  .body-lg {
+    @apply font-body text-lg leading-[1.5];
+  }
+  .body {
+    @apply font-body text-base leading-[1.5];
+  }
+
+  .container-x {
+    @apply mx-auto w-full max-w-content px-5 sm:px-8;
+  }
+
+  /* Long-form legal prose */
+  .legal h2 {
+    @apply font-display text-2xl font-bold tracking-tight mt-10 mb-3;
+  }
+  .legal h3 {
+    @apply font-display text-lg font-bold mt-6 mb-2;
+  }
+  .legal p {
+    @apply font-body text-base leading-[1.6] text-ink/80 mb-4;
+  }
+  .legal ul {
+    @apply mb-4 space-y-2 pl-5;
+  }
+  .legal li {
+    @apply font-body text-base leading-[1.6] text-ink/80 list-disc;
+  }
+  .legal a {
+    @apply text-purple underline underline-offset-2;
+  }
+  .legal strong {
+    @apply text-ink;
+  }
+
+  /* CTA — Inter SemiBold, accent color allowed */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-body font-semibold text-base rounded-none px-6 py-3 transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ink;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-paper hover:bg-neutral-800;
+  }
+  .btn-outline {
+    @apply btn border-2 border-ink text-ink hover:bg-ink hover:text-paper;
+  }
+}
+/* ============================================================
+   Legal pages (Terms / Privacy / Refund)
+   ============================================================ */
+.legal-doc { max-width: 760px; }
+.legal-doc h2 {
+  margin-top: 2.25rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #0a0a0a;
+}
+.legal-doc h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0a0a0a;
+}
+.legal-doc p {
+  margin: 0.75rem 0;
+  color: #404040;
+  line-height: 1.75;
+}
+.legal-doc ul,
+.legal-doc ol {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+}
+.legal-doc ul { list-style: disc; }
+.legal-doc ol { list-style: decimal; }
+.legal-doc li {
+  margin: 0.4rem 0;
+  color: #404040;
+  line-height: 1.7;
+}
+.legal-doc li::marker { color: #7c3aed; }
+.legal-doc a {
+  color: #7c3aed;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.legal-doc strong { color: #0a0a0a; font-weight: 700; }
+
+.legal-xnav a { color: #6b7280; }
+.legal-xnav a:hover { color: #0a0a0a; }
+.legal-xnav a[aria-current="page"] { color: #0a0a0a; font-weight: 600; }
