@@ -448,8 +448,6 @@
 
 
 
-
-
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
@@ -474,9 +472,7 @@ export async function signUp(
     const billingRegion = (formData.get("billingRegion") as string) || "international";
     const nextPath = (formData.get("next") as string) || "/app/checkout";
 
-    if (!email || !password) {
-      return { error: "Email and password are required." };
-    }
+    if (!email || !password) return { error: "Email and password are required." };
 
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email,
@@ -487,39 +483,26 @@ export async function signUp(
           business_name: businessName || "",
           billing_region: billingRegion,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "https://xynetra.com"}${nextPath}`,
       },
     });
 
-    if (signUpError) {
-      return { error: signUpError.message };
-    }
-
+    if (signUpError) return { error: signUpError.message };
     const user = authData.user;
-    if (!user) {
-      return { error: "Signup succeeded but user object is missing." };
-    }
+    if (!user) return { error: "Signup failed: no user returned." };
 
-    // Create/update profile
-    const { error: profileErr } = await supabase.from("profiles").upsert({
+    await supabase.from("profiles").upsert({
       id: user.id,
       full_name: fullName || "",
       business_name: businessName || "",
       billing_region: billingRegion,
       subscription_status: "inactive",
-      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     }, { onConflict: "id" });
 
-    if (profileErr) {
-      console.error("Profile upsert error:", profileErr.message);
-      // Don't fail the signup if profile insert has issues, but return warning
-      return { error: profileErr.message, userId: user.id };
-    }
-
-    return { message: "Account created. Check your email.", userId: user.id };
+    return { message: "Account created.", userId: user.id };
   } catch (err: any) {
-    console.error("signUp crashed:", err);
-    return { error: err.message || "An unexpected error occurred. Please try again." };
+    console.error("signUp error:", err);
+    return { error: err.message || "Signup error." };
   }
 }
 
@@ -531,23 +514,62 @@ export async function signIn(
     const supabase = await createClient();
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
+    if (!email || !password) return { error: "Email and password are required." };
 
-    if (!email || !password) {
-      return { error: "Email and password are required." };
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
     return { message: "Login successful.", userId: data.user?.id };
   } catch (err: any) {
-    console.error("signIn crashed:", err);
-    return { error: err.message || "Login failed. Please try again." };
+    console.error("signIn error:", err);
+    return { error: err.message || "Login error." };
+  }
+}
+
+export async function requestPasswordReset(
+  prevState: AuthState | undefined,
+  formData: FormData
+): Promise<AuthState> {
+  try {
+    const supabase = await createClient();
+    const email = formData.get("email") as string;
+    if (!email) return { error: "Email is required." };
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "https://xynetra.com"}/auth/callback?next=/reset-password/update`,
+    });
+    if (error) return { error: error.message };
+    return { message: "Check your email for reset instructions." };
+  } catch (err: any) {
+    console.error("requestPasswordReset error:", err);
+    return { error: err.message || "Reset request failed." };
+  }
+}
+
+export async function updatePassword(
+  prevState: AuthState | undefined,
+  formData: FormData
+): Promise<AuthState> {
+  try {
+    const supabase = await createClient();
+    const password = formData.get("password") as string;
+    if (!password || password.length < 6) return { error: "Password must be at least 6 characters." };
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+    return { message: "Password updated." };
+  } catch (err: any) {
+    console.error("updatePassword error:", err);
+    return { error: err.message || "Update failed." };
+  }
+}
+
+export async function signOut(): Promise<{ message: string }> {
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    return { message: "Signed out." };
+  } catch (err: any) {
+    console.error("signOut error:", err);
+    return { message: "Sign out completed." };
   }
 }
