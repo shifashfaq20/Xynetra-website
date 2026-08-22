@@ -403,6 +403,8 @@
 // };
 
 
+
+
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -412,7 +414,83 @@ type CookieToSet = {
   options?: CookieOptions;
 };
 
-export async function proxy(request: NextRequest) { // ← changed from updateSession
+export async function proxy(request: NextRequest) {  // ← WAS updateSession
   let supabaseResponse = NextResponse.next({ request });
-  // ... rest of file stays exactly the same ...
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet: CookieToSet[]) {
+          cookiesToSet.forEach((cookie: CookieToSet) => {
+            request.cookies.set(cookie.name, cookie.value);
+          });
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach((cookie: CookieToSet) => {
+            supabaseResponse.cookies.set(
+              cookie.name,
+              cookie.value,
+              cookie.options
+            );
+          });
+        },
+      },
+    }
+  );
+
+  let user: any = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // DB/auth unreachable
+  }
+
+  const path = request.nextUrl.pathname;
+
+  if (!user && (path.startsWith("/app") || path.startsWith("/onboarding"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("next", path);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && (path.startsWith("/onboarding") || path.startsWith("/app"))) {
+    const allowedWhenUnpaid =
+      path.startsWith("/app/checkout") || path.startsWith("/app/billing");
+    if (!allowedWhenUnpaid) {
+      let profile: any = null;
+      try {
+        const res = await supabase
+          .from("profiles")
+          .select("subscription_status")
+          .eq("id", user.id)
+          .single();
+        profile = res.data;
+      } catch {
+        profile = null;
+      }
+      if (profile?.subscription_status !== "active") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/app/checkout";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
+  if (user && (path === "/login" || path === "/signup")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/app/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  return supabaseResponse;
 }
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
