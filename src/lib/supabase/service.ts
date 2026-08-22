@@ -1,3 +1,4 @@
+// src/lib/supabase/service.ts
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 // SERVER-ONLY. Do not import from client components.

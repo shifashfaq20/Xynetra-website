@@ -1,3 +1,4 @@
+// src/lib/admin/roles.ts
 // Plain module: synchronous helpers + shared types. NOT a server-action file.
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "admin@xynetra.com")

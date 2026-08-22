@@ -74,3 +74,6 @@ export async function GET(request: Request) {
     message: `✓ Confirmed ${email}. You can now log in at /login`,
   });
 }
+
+
+

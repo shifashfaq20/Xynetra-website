@@ -1,0 +1,67 @@
+
+> xynetra-website@1.0.0 build
+> next build
+
+   ▲ Next.js 15.1.6
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (106kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (253kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/28) ...
+   Generating static pages (7/28) 
+   Generating static pages (14/28) 
+   Generating static pages (21/28) 
+ ✓ Generating static pages (28/28)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    1.86 kB         116 kB
+├ ○ /_not-found                          174 B           106 kB
+├ ○ /about                               174 B           106 kB
+├ ƒ /api/dev/confirm-email               174 B           106 kB
+├ ƒ /api/google-calendar/auth            174 B           106 kB
+├ ƒ /api/google-calendar/calendars       174 B           106 kB
+├ ƒ /api/google-calendar/callback        174 B           106 kB
+├ ƒ /api/onboarding/test-reminder        174 B           106 kB
+├ ƒ /api/paddle/webhook                  174 B           106 kB
+├ ƒ /api/waitlist                        174 B           106 kB
+├ ƒ /app                                 174 B           106 kB
+├ ƒ /app/billing                         6.3 kB          112 kB
+├ ƒ /app/checkout                        68.6 kB         178 kB
+├ ƒ /app/clients/[id]                    208 B           112 kB
+├ ƒ /app/dashboard                       5.91 kB         118 kB
+├ ƒ /app/settings                        3.09 kB         108 kB
+├ ƒ /auth/callback                       174 B           106 kB
+├ ƒ /client/dashboard                    192 B           108 kB
+├ ○ /contact                             174 B           106 kB
+├ ○ /guide                               376 B           106 kB
+├ ○ /login                               1.62 kB         111 kB
+├ ƒ /onboarding                          64.7 kB         170 kB
+├ ○ /pricing                             4.02 kB         113 kB
+├ ○ /privacy                             185 B           109 kB
+├ ○ /refund-policy                       185 B           109 kB
+├ ○ /reset-password                      1.29 kB         110 kB
+├ ○ /reset-password/update               1.17 kB         106 kB
+├ ○ /robots.txt                          0 B                0 B
+├ ○ /services                            185 B           109 kB
+├ ○ /services/lead-to-booking            1.26 kB         107 kB
+├ ○ /services/recovery                   174 B           106 kB
+├ ○ /signup                              1.88 kB         111 kB
+├ ○ /sitemap.xml                         0 B                0 B
+└ ○ /terms                               185 B           109 kB
++ First Load JS shared by all            105 kB
+  ├ chunks/1517-a654d634bf7bf060.js      50.5 kB
+  ├ chunks/4bd1b696-b31a4aba246d1ab7.js  52.9 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+ƒ Middleware                             88.7 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

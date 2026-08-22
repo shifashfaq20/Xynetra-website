@@ -10,4 +10,4 @@ npm-debug.log*
 .env*.local
 next-env.d.ts
 /.vercel
-public/videos/
+public/videos/demo.mp4

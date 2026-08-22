@@ -178,7 +178,7 @@
 // }
 
 
-
+// src/app/(auth)/signup/SignupForm.tsx
 "use client";
 
 import Link from "next/link";
@@ -302,3 +302,12 @@ function Submit() {
   const { pending } = useFormStatus();
   return <SubmitButton pending={pending}>Create account</SubmitButton>;
 }
+
+
+
+
+
+
+
+
+

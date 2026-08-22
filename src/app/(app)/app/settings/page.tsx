@@ -70,7 +70,7 @@ import { redirect } from 'next/navigation';
 import { getAccount } from '@/lib/account';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin/roles';
-import { SettingsPanels } from '@/components/settings/SettingsPanels';
+import { SettingsPanels } from '@/components/settings/Settingspanels';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Settings', robots: { index: false } };
