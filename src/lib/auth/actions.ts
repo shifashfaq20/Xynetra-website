@@ -447,7 +447,6 @@
 
 
 
-
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
@@ -563,13 +562,11 @@ export async function updatePassword(
   }
 }
 
-export async function signOut(): Promise<{ message: string }> {
+export async function signOut(formData?: FormData): Promise<void> {
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
-    return { message: "Signed out." };
   } catch (err: any) {
     console.error("signOut error:", err);
-    return { message: "Sign out completed." };
   }
 }
