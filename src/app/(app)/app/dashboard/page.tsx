@@ -950,7 +950,164 @@
 // }
 
 
-// src/app/(app)/app/dashboard/page.tsx
+// // src/app/(app)/app/dashboard/page.tsx
+// import type { Metadata } from "next";
+// import { redirect } from "next/navigation";
+// import { getAccount } from "@/lib/account";
+// import { createClient } from "@/lib/supabase/server";
+// import { isAdminEmail } from "@/lib/admin/roles";
+// import { listClients } from "@/lib/admin/actions";
+// import { AdminControlPanel } from "@/components/admin/AdminControlPanel";
+
+// import { StatsCards } from "@/components/dashbaord/StatsCards";
+// import { UpcomingAppointments } from "@/components/dashbaord/UpcomingAppointments";
+// import { WaitlistManager } from "@/components/dashbaord/WaitlistManager";
+// import { ActivityFeed } from "@/components/dashbaord/ActivityFeed";
+// import { NeedsAttention } from "@/components/dashbaord/NeedsAttention";
+// import { AccountStatus } from "@/components/dashbaord/AccountStatus";
+// import {
+//   getDashboardStats,
+//   getUpcomingAppointments,
+//   getRecentReminders,
+//   getWaitlist,
+//   getOpenHandoffs,
+// } from "@/lib/dashboard/action";
+
+// export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
+
+// // ── 🛠️ PRODUCTION FIXES: FORCE NEXT.JS TO BYPASS STATIC GENERATION ──
+// export const dynamic = "force-dynamic";
+// export const revalidate = 0;
+
+// export default async function DashboardPage() {
+//   const account = await getAccount();
+  
+//   if (!account) {
+//     redirect("/login");
+//   }
+
+//   /* ── ADMIN: Global Client Controller ── */
+//   if (isAdminEmail(account.email)) {
+//     const clients = await listClients();
+//     return (
+//       <div>
+//         <header className="mb-8 border-b border-grey-line pb-6">
+//           <p className="eyebrow text-ink/50">Internal</p>
+//           <h1 className="mt-2 font-display text-3xl font-bold tracking-tight">
+//             Control Panel
+//           </h1>
+//         </header>
+//         <AdminControlPanel initialClients={clients} />
+//       </div>
+//     );
+//   }
+
+//   /* ── GATE 1: billing first — unpaid users never see the app ── */
+//   const supabase = await createClient();
+//   const { data: profile } = await supabase
+//     .from("profiles")
+//     .select("subscription_status, billing_region")
+//     .eq("id", account.userId)
+//     .single();
+    
+//   if (profile?.subscription_status !== "active") {
+//     redirect("/app/checkout");
+//   }
+
+//   /* ── GATE 2: onboarding must be complete ── */
+//   const { data: onboarding } = await supabase
+//     .from("onboarding")
+//     .select("completed_at")
+//     .eq("user_id", account.userId)
+//     .single();
+    
+//   if (!onboarding?.completed_at) {
+//     redirect("/onboarding");
+//   }
+
+//   /* ── CLIENT: real operations dashboard ── */
+//   const [stats, appointments, reminders, waitlist, handoffs, clientRes] =
+//     await Promise.all([
+//       getDashboardStats("week"),
+//       getUpcomingAppointments(),
+//       getRecentReminders(),
+//       getWaitlist(),
+//       getOpenHandoffs(),
+//       supabase
+//         .from("clients")
+//         .select("paused, whatsapp_status, whatsapp_display_name, whatsapp_number")
+//         .eq("id", account.userId)
+//         .maybeSingle(),
+//     ]);
+
+//   const client = clientRes.data;
+//   const paused = !!client?.paused;
+//   const linePending = client?.whatsapp_status === "pending";
+//   const currency = profile?.billing_region === "pakistan" ? "PKR" : "USD";
+
+//   return (
+//     <div className="space-y-10">
+//       <header className="border-b border-grey-line pb-6">
+//         <p className="eyebrow text-ink/50">Client Dashboard</p>
+//         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink">
+//           {account.businessName}
+//         </h1>
+//         <p className="mt-1 font-body text-sm text-ink/60">
+//           Reminders, confirmations, and recovered slots — live.
+//         </p>
+//       </header>
+
+//       {paused && (
+//         <Banner tone="warn">
+//           Your service is paused — no reminders are going out. Resume it in{" "}
+//           <a href="/app/settings" className="underline font-semibold">
+//             Settings
+//           </a>
+//           .
+//         </Banner>
+//       )}
+//       {!paused && linePending && (
+//         <Banner tone="info">
+//           Your dedicated number is being set up — usually within one business day.
+//           Reminders start automatically once it&apos;s live.
+//         </Banner>
+//       )}
+
+//       <StatsCards initialStats={stats} currency={currency} />
+
+//       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+//         <UpcomingAppointments appointments={appointments} />
+//         <WaitlistManager initialWaitlist={waitlist} readOnly={false} />
+//       </div>
+//       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+//         <NeedsAttention initialHandoffs={handoffs} />
+//         <ActivityFeed reminders={reminders} />
+//       </div>
+//       <AccountStatus profile={profile} email={account.email} client={client} />
+//     </div>
+//   );
+// }
+
+// function Banner({
+//   tone,
+//   children,
+// }: {
+//   tone: "warn" | "info";
+//   children: React.ReactNode;
+// }) {
+//   const cls =
+//     tone === "warn"
+//       ? "border-coral/40 bg-coral-light text-ink"
+//       : "border-grey-line bg-grey-light text-ink/70";
+//   return (
+//     <div className={`rounded-lg border px-4 py-3 font-body text-sm ${cls}`}>
+//       {children}
+//     </div>
+//   );
+// }
+
+
+
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAccount } from "@/lib/account";
@@ -974,21 +1131,25 @@ import {
 } from "@/lib/dashboard/action";
 
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
-
-// ── 🛠️ PRODUCTION FIXES: FORCE NEXT.JS TO BYPASS STATIC GENERATION ──
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  const account = await getAccount();
-  
-  if (!account) {
-    redirect("/login");
+  let account: Awaited<ReturnType<typeof getAccount>> | null = null;
+  try {
+    account = await getAccount();
+  } catch (e) {
+    console.error("getAccount error:", e);
   }
+  if (!account) redirect("/login");
 
-  /* ── ADMIN: Global Client Controller ── */
   if (isAdminEmail(account.email)) {
-    const clients = await listClients();
+    let clients: Awaited<ReturnType<typeof listClients>> = [];
+    try {
+      clients = await listClients();
+    } catch (e) {
+      console.error("listClients error:", e);
+    }
     return (
       <div>
         <header className="mb-8 border-b border-grey-line pb-6">
@@ -997,35 +1158,42 @@ export default async function DashboardPage() {
             Control Panel
           </h1>
         </header>
-        <AdminControlPanel initialClients={clients} />
+        <AdminControlPanel initialClients={clients || []} />
       </div>
     );
   }
 
-  /* ── GATE 1: billing first — unpaid users never see the app ── */
   const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("subscription_status, billing_region")
-    .eq("id", account.userId)
-    .single();
-    
+  let profile: any = null;
+  try {
+    const res = await supabase
+      .from("profiles")
+      .select("subscription_status, billing_region")
+      .eq("id", account.userId)
+      .single();
+    profile = res.data;
+  } catch {
+    profile = null;
+  }
+
   if (profile?.subscription_status !== "active") {
     redirect("/app/checkout");
   }
 
-  /* ── GATE 2: onboarding must be complete ── */
-  const { data: onboarding } = await supabase
-    .from("onboarding")
-    .select("completed_at")
-    .eq("user_id", account.userId)
-    .single();
-    
-  if (!onboarding?.completed_at) {
-    redirect("/onboarding");
+  let onboarding: any = null;
+  try {
+    const res = await supabase
+      .from("onboarding")
+      .select("completed_at")
+      .eq("user_id", account.userId)
+      .single();
+    onboarding = res.data;
+  } catch {
+    onboarding = null;
   }
 
-  /* ── CLIENT: real operations dashboard ── */
+  if (!onboarding?.completed_at) redirect("/onboarding");
+
   const [stats, appointments, reminders, waitlist, handoffs, clientRes] =
     await Promise.all([
       getDashboardStats("week"),
@@ -1040,7 +1208,7 @@ export default async function DashboardPage() {
         .maybeSingle(),
     ]);
 
-  const client = clientRes.data;
+  const client = clientRes?.data ?? null;
   const paused = !!client?.paused;
   const linePending = client?.whatsapp_status === "pending";
   const currency = profile?.billing_region === "pakistan" ? "PKR" : "USD";
@@ -1088,13 +1256,7 @@ export default async function DashboardPage() {
   );
 }
 
-function Banner({
-  tone,
-  children,
-}: {
-  tone: "warn" | "info";
-  children: React.ReactNode;
-}) {
+function Banner({ tone, children }: { tone: "warn" | "info"; children: React.ReactNode }) {
   const cls =
     tone === "warn"
       ? "border-coral/40 bg-coral-light text-ink"
