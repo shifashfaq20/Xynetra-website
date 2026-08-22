@@ -779,7 +779,8 @@ export function Step3ConnectWhatsApp({ initial, onNext }: Props) {
     if (!EMBEDDED_CONFIGURED) return
 
     if (window.FB) {
-      setSdkReady(true)
+      // Let the current effect finish before updating React state.
+      window.setTimeout(() => setSdkReady(true), 0)
       return
     }
 

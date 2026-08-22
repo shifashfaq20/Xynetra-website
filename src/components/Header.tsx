@@ -237,13 +237,13 @@ export function Header() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <a
+          <Link
             href="/#demo"
             className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-ink/80 transition-colors hover:text-ink"
           >
             <PlayIcon />
             Watch demo
-          </a>
+          </Link>
           <Link
             href="/login"
             className="font-body text-sm font-semibold text-ink hover:text-ink/60"
@@ -291,14 +291,14 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
-            <a
+            <Link
               href="/#demo"
               onClick={() => setOpen(false)}
               className="inline-flex items-center gap-2 py-3 font-body text-base font-semibold text-ink"
             >
               <PlayIcon />
               Watch demo
-            </a>
+            </Link>
             <Link
               href="/login"
               onClick={() => setOpen(false)}

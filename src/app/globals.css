@@ -3,8 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --font-space-grotesk: "Space Grotesk", Arial, sans-serif;
-  --font-inter: "Inter", Arial, sans-serif;
+  /* Bundled through Fontsource so production builds do not depend on Google Fonts. */
+  --font-space-grotesk: "Space Grotesk Variable", Arial, sans-serif;
+  --font-inter: "Inter Variable", Arial, sans-serif;
 }
 
 @layer base {

@@ -16,9 +16,9 @@ session-gated dashboard and billing area.
 
 | Concern            | Choice                                                        |
 | ------------------ | ------------------------------------------------------------- |
-| Framework          | Next.js 15 (App Router) + React 19 + TypeScript               |
+| Framework          | Next.js 16 (App Router) + React 19 + TypeScript               |
 | Styling            | Tailwind CSS 3 with brand tokens (`tailwind.config.ts`)       |
-| Fonts              | Space Grotesk + Inter via `next/font` (self-hosted, no CDN)   |
+| Fonts              | Space Grotesk + Inter via bundled Fontsource packages (no CDN) |
 | Auth + DB          | Supabase (Postgres + Auth) via `@supabase/ssr`                |
 | Payments (US/UK)   | Paddle Billing overlay checkout (`@paddle/paddle-js`)         |
 | Payments (Pakistan)| Manual bank / EasyPaisa / JazzCash with "I've paid" flow      |
@@ -151,7 +151,7 @@ Both are defined once in [`src/lib/constants.ts`](src/lib/constants.ts).
 | `/app/billing`               | Dynamic | Plan, invoices, payment (auth req.) |
 | `/robots.txt`, `/sitemap.xml` | Static  | SEO                                 |
 
-`/app/*` is guarded by middleware ([`src/middleware.ts`](src/middleware.ts));
+`/app/*` is guarded by the request proxy ([`src/proxy.ts`](src/proxy.ts));
 signed-out visitors are redirected to `/login`.
 
 ---
@@ -175,5 +175,5 @@ footer use only these supplied files (never redrawn or recolored).
    to the redirect allow-list (for email confirm + password reset callbacks).
 5. Deploy. `npm run build` runs automatically.
 
-Any Node host that runs `next build` + `next start` works too. Node 18+ required
-(built and tested on Node 24).
+Any Node host that runs `next build` + `next start` works too. Node 20.9+ required
+(built and tested on Node 22).

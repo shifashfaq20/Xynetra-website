@@ -911,12 +911,17 @@ export function AdminControlPanel({ initialClients }: { initialClients: AdminCli
   const [phoneNumberId, setPhoneNumberId] = useState(active?.whatsapp_phone_number_id || "");
 
   useEffect(() => {
-    if (active) {
+    if (!active) return;
+
+    // Defer the form reset until after the active client render completes.
+    const syncForm = window.setTimeout(() => {
       setRegion(active.billing_region);
       setStatus(active.subscription_status);
       setPhoneNumberId(active.whatsapp_phone_number_id || "");
-    }
-  }, [active?.id, active?.billing_region, active?.subscription_status, active?.whatsapp_phone_number_id]);
+    }, 0);
+
+    return () => window.clearTimeout(syncForm);
+  }, [active]);
 
   const [newEmail, setNewEmail] = useState("");
   const [newPass, setNewPass] = useState(genPassword());

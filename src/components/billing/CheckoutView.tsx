@@ -105,12 +105,7 @@ export default function CheckoutView() {
   // Fetch email → load Paddle → init once → auto-open once.
   useEffect(() => {
     if (!plan) return;
-    if (!PADDLE_CLIENT_TOKEN) {
-      setError(
-        "Missing NEXT_PUBLIC_PADDLE_CLIENT_TOKEN. Add it to .env.local and restart the dev server.",
-      );
-      return;
-    }
+    if (!PADDLE_CLIENT_TOKEN) return;
 
     let active = true;
 
@@ -187,6 +182,11 @@ export default function CheckoutView() {
   }
 
   const price = billing === "annual" ? plan.annual : plan.monthly;
+  const checkoutError =
+    error ??
+    (!PADDLE_CLIENT_TOKEN
+      ? "Missing NEXT_PUBLIC_PADDLE_CLIENT_TOKEN. Add it to .env.local and restart the dev server."
+      : null);
 
   return (
     <div className="mx-auto max-w-xl px-6 py-20">
@@ -224,9 +224,9 @@ export default function CheckoutView() {
         </p>
       </div>
 
-      {error ? (
+      {checkoutError ? (
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {checkoutError}
         </div>
       ) : (
         <button
