@@ -447,7 +447,7 @@
 
 
 
-"use server";
+ "use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
@@ -458,18 +458,27 @@ export type AuthState = {
   userId?: string;
 };
 
+function checkEnv() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return "Server misconfiguration: missing Supabase environment variables in production.";
+  }
+  return null;
+}
+
 export async function signUp(
   prevState: AuthState | undefined,
   formData: FormData
 ): Promise<AuthState> {
   try {
+    const envErr = checkEnv();
+    if (envErr) return { error: envErr };
+
     const supabase = await createClient();
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     const fullName = formData.get("fullName") as string;
     const businessName = formData.get("businessName") as string;
     const billingRegion = (formData.get("billingRegion") as string) || "international";
-    const nextPath = (formData.get("next") as string) || "/app/checkout";
 
     if (!email || !password) return { error: "Email and password are required." };
 
@@ -500,8 +509,8 @@ export async function signUp(
 
     return { message: "Account created.", userId: user.id };
   } catch (err: any) {
-    console.error("signUp error:", err);
-    return { error: err.message || "Signup error." };
+    console.error("signUp crashed:", err);
+    return { error: err?.message || "Signup server error." };
   }
 }
 
@@ -510,6 +519,9 @@ export async function signIn(
   formData: FormData
 ): Promise<AuthState> {
   try {
+    const envErr = checkEnv();
+    if (envErr) return { error: envErr };
+
     const supabase = await createClient();
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
@@ -519,8 +531,8 @@ export async function signIn(
     if (error) return { error: error.message };
     return { message: "Login successful.", userId: data.user?.id };
   } catch (err: any) {
-    console.error("signIn error:", err);
-    return { error: err.message || "Login error." };
+    console.error("signIn crashed:", err);
+    return { error: err?.message || "Login server error." };
   }
 }
 
@@ -529,6 +541,9 @@ export async function requestPasswordReset(
   formData: FormData
 ): Promise<AuthState> {
   try {
+    const envErr = checkEnv();
+    if (envErr) return { error: envErr };
+
     const supabase = await createClient();
     const email = formData.get("email") as string;
     if (!email) return { error: "Email is required." };
@@ -539,8 +554,8 @@ export async function requestPasswordReset(
     if (error) return { error: error.message };
     return { message: "Check your email for reset instructions." };
   } catch (err: any) {
-    console.error("requestPasswordReset error:", err);
-    return { error: err.message || "Reset request failed." };
+    console.error("requestPasswordReset crashed:", err);
+    return { error: err?.message || "Reset server error." };
   }
 }
 
@@ -549,6 +564,9 @@ export async function updatePassword(
   formData: FormData
 ): Promise<AuthState> {
   try {
+    const envErr = checkEnv();
+    if (envErr) return { error: envErr };
+
     const supabase = await createClient();
     const password = formData.get("password") as string;
     if (!password || password.length < 6) return { error: "Password must be at least 6 characters." };
@@ -557,8 +575,8 @@ export async function updatePassword(
     if (error) return { error: error.message };
     return { message: "Password updated." };
   } catch (err: any) {
-    console.error("updatePassword error:", err);
-    return { error: err.message || "Update failed." };
+    console.error("updatePassword crashed:", err);
+    return { error: err?.message || "Update server error." };
   }
 }
 
@@ -567,6 +585,6 @@ export async function signOut(formData?: FormData): Promise<void> {
     const supabase = await createClient();
     await supabase.auth.signOut();
   } catch (err: any) {
-    console.error("signOut error:", err);
+    console.error("signOut crashed:", err);
   }
 }
