@@ -10,6 +10,8 @@
 //   return <SignupForm />;
 // }
 
+
+// src/app/(auth)/signup/page.tsx
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { SignupForm } from "./SignupForm";
