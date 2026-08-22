@@ -1329,8 +1329,7 @@
 
 
 
-
-
+// src/lib/admin/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -1355,7 +1354,7 @@ export type AdminClient = {
 
 const ADMIN_LIST = (process.env.ADMIN_EMAILS || "admin@xynetra.com")
   .split(",")
-  .map((e) => e.trim().toLowerCase())
+  .map((email) => email.trim().toLowerCase())
   .filter(Boolean);
 
 async function currentUserEmail(): Promise<string | null> {
@@ -1373,63 +1372,60 @@ export async function requireAdmin(): Promise<string> {
 }
 
 export async function listClients(): Promise<AdminClient[]> {
-  await requireAdmin();
-  const svc = createServiceClient();
-
-  const { data: profiles, error } = await svc
-    .from("profiles")
-    .select("id, full_name, business_name, billing_region, subscription_status");
-
-  if (error) throw new Error(error.message);
-
-  const { data: tenantRows, error: tenantError } = await svc
-    .from("clients")
-    .select("id, whatsapp_phone_number_id, phone_provisioning, timezone, owner_whatsapp");
-
-  if (tenantError) throw new Error(tenantError.message);
-
-  const tenantById = new Map<string, any>(
-    (tenantRows || []).map((t: any) => [t.id, t])
-  );
-
-  // Safe auth admin call — never crash dashboard if this fails
-  let emailById = new Map<string, string>();
   try {
+    await requireAdmin();
+    const svc = createServiceClient();
+
+    const { data: profiles, error } = await svc
+      .from("profiles")
+      .select("id, full_name, business_name, billing_region, subscription_status");
+
+    if (error) throw new Error(error.message);
+
+    const { data: tenantRows, error: tenantError } = await svc
+      .from("clients")
+      .select("id, whatsapp_phone_number_id, phone_provisioning, timezone, owner_whatsapp");
+
+    if (tenantError) throw new Error(tenantError.message);
+
+    const tenantById = new Map<string, any>(
+      (tenantRows || []).map((tenant: any) => [tenant.id, tenant])
+    );
+
     const { data: authData, error: userError } = await svc.auth.admin.listUsers();
-    if (!userError) {
-      emailById = new Map<string, string>(
-        (authData?.users || []).map((u: any) => [u.id, u.email || ""])
-      );
-    } else {
-      console.error("Auth admin listUsers error:", userError.message);
-    }
-  } catch (e: any) {
-    console.error("Auth admin listUsers exception:", e.message);
+    if (userError) throw new Error(userError.message);
+
+    const emailById = new Map<string, string>(
+      (authData?.users || []).map((user: any) => [user.id, user.email || ""])
+    );
+
+    return (profiles || [])
+      .filter((profile: any) => Boolean(profile.business_name))
+      .map((profile: any): AdminClient => {
+        const tenant = tenantById.get(profile.id);
+        const email = emailById.get(profile.id) || "";
+        return {
+          id: profile.id,
+          email,
+          business_name: profile.business_name || "Unnamed business",
+          full_name: profile.full_name || null,
+          billing_region: profile.billing_region || "international",
+          subscription_status: profile.subscription_status || "inactive",
+          whatsapp_phone_number_id: tenant?.whatsapp_phone_number_id || null,
+          phone_option: tenant?.phone_provisioning?.option || null,
+          phone_number: tenant?.phone_provisioning?.phone_number || null,
+          phone_country: tenant?.phone_provisioning?.country || null,
+          timezone: tenant?.timezone || null,
+          owner_whatsapp: tenant?.owner_whatsapp || null,
+        };
+      })
+      .filter((client: AdminClient) => Boolean(client.email) && !ADMIN_LIST.includes(client.email.toLowerCase()))
+      // Added explicit types here to fix compilation error:
+      .sort((a: AdminClient, b: AdminClient) => a.business_name.localeCompare(b.business_name));
+  } catch (err: any) {
+    console.error("Error listing clients:", err);
+    return [];
   }
-
-  const clients: AdminClient[] = (profiles || [])
-    .filter((p: any) => Boolean(p.business_name))
-    .map((p: any): AdminClient => {
-      const tenant = tenantById.get(p.id);
-      return {
-        id: p.id,
-        email: emailById.get(p.id) || "",
-        business_name: p.business_name || "Unnamed business",
-        full_name: p.full_name || null,
-        billing_region: p.billing_region || "international",
-        subscription_status: p.subscription_status || "inactive",
-        whatsapp_phone_number_id: tenant?.whatsapp_phone_number_id || null,
-        phone_option: tenant?.phone_provisioning?.option || null,
-        phone_number: tenant?.phone_provisioning?.phone_number || null,
-        phone_country: tenant?.phone_provisioning?.country || null,
-        timezone: tenant?.timezone || null,
-        owner_whatsapp: tenant?.owner_whatsapp || null,
-      };
-    })
-    .filter((c: AdminClient) => Boolean(c.email) && !ADMIN_LIST.includes(c.email.toLowerCase()))
-    .sort((a: AdminClient, b: AdminClient) => a.business_name.localeCompare(b.business_name));
-
-  return clients;
 }
 
 export async function updateClientSettings(
@@ -1439,17 +1435,23 @@ export async function updateClientSettings(
   await requireAdmin();
   const svc = createServiceClient();
 
-  const { error } = await svc.from("profiles").update({
-    billing_region: input.billing_region,
-    subscription_status: input.subscription_status,
-  }).eq("id", userId);
+  const { error } = await svc
+    .from("profiles")
+    .update({
+      billing_region: input.billing_region,
+      subscription_status: input.subscription_status,
+    })
+    .eq("id", userId);
+
   if (error) throw new Error(error.message);
 
-  const { error: clientErr } = await svc.from("clients").update({
-    subscription_status: input.subscription_status,
-    updated_at: new Date().toISOString(),
-  }).eq("id", userId);
-  if (clientErr) throw new Error(clientErr.message);
+  await svc
+    .from("clients")
+    .upsert({
+      id: userId,
+      subscription_status: input.subscription_status,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
 
   revalidatePath("/app/dashboard");
   revalidatePath(`/app/clients/${userId}`);
@@ -1461,19 +1463,15 @@ export async function setClientPhoneNumberId(userId: string, phoneNumberId: stri
   const svc = createServiceClient();
   const value = phoneNumberId && phoneNumberId.trim() ? phoneNumberId.trim() : null;
 
-  const { data, error } = await svc.from("clients").update({
-    whatsapp_phone_number_id: value,
-    updated_at: new Date().toISOString(),
-  }).eq("id", userId).select("id");
+  const { error } = await svc
+    .from("clients")
+    .upsert({
+      id: userId,
+      whatsapp_phone_number_id: value,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "id" });
 
   if (error) throw new Error(error.message);
-  if (!data || data.length === 0) {
-    const { error: upsertErr } = await svc.from("clients").upsert(
-      { id: userId, whatsapp_phone_number_id: value },
-      { onConflict: "id" }
-    );
-    if (upsertErr) throw new Error(upsertErr.message);
-  }
 
   revalidatePath("/app/dashboard");
   revalidatePath(`/app/clients/${userId}`);
@@ -1499,14 +1497,19 @@ export async function createClientAccount(input: {
       billing_region: input.billing_region,
     },
   });
+
   if (error) throw new Error(error.message);
 
   if (data.user) {
-    const { error: profileErr } = await svc.from("profiles").update({
-      subscription_status: "active",
-      plan: "pro",
-    }).eq("id", data.user.id);
-    if (profileErr) console.error("Profile update failed:", profileErr);
+    const { error: profileError } = await svc
+      .from("profiles")
+      .update({
+        subscription_status: "active",
+        plan: "pro",
+      })
+      .eq("id", data.user.id);
+
+    if (profileError) console.error("Could not update profile:", profileError);
   }
 
   revalidatePath("/app/dashboard");
@@ -1520,20 +1523,30 @@ export async function runSimulationForClient(userId: string) {
   const now = Date.now();
 
   const appointments = [
-    { client_id: userId, customer_name: "Sim: Olivia Hart", appointment_time: new Date(now + 2 * day).toISOString(), status: "confirmed", timezone: "America/New_York", value: 140, recovered_from_waitlist: false },
-    { client_id: userId, customer_name: "Sim: Daniel Cho", appointment_time: new Date(now + 3 * day).toISOString(), status: "cancelled", timezone: "America/New_York", value: 180, recovered_from_waitlist: false },
-    { client_id: userId, customer_name: "Sim: Priya Nair", appointment_time: new Date(now + 4 * day).toISOString(), status: "confirmed", timezone: "Asia/Karachi", value: 220, recovered_from_waitlist: true },
-    { client_id: userId, customer_name: "Sim: Marco Rossi", appointment_time: new Date(now - day).toISOString(), status: "confirmed", timezone: "Europe/Rome", value: 160, recovered_from_waitlist: true },
+    {
+      client_id: userId,
+      customer_name: "Sim: Olivia Hart",
+      appointment_time: new Date(now + 2 * day).toISOString(),
+      start_time: new Date(now + 2 * day).toISOString(),
+      status: "confirmed",
+      timezone: "America/New_York",
+      value: 140,
+      recovered_from_waitlist: false,
+    },
+    {
+      client_id: userId,
+      customer_name: "Sim: Daniel Cho",
+      appointment_time: new Date(now + 3 * day).toISOString(),
+      start_time: new Date(now + 3 * day).toISOString(),
+      status: "cancelled",
+      timezone: "America/New_York",
+      value: 180,
+      recovered_from_waitlist: false,
+    },
   ];
 
   const { error } = await svc.from("appointments").insert(appointments);
   if (error) throw new Error(error.message);
-
-  const { error: remErr } = await svc.from("reminders").insert([
-    { client_id: userId, message: "24h reminder sent for Sim: Olivia Hart - appointment in 2 days", sent_at: new Date().toISOString() },
-    { client_id: userId, message: "Waitlist recovery: offered a cancelled slot to Sim: Priya Nair", sent_at: new Date(now - 3600000).toISOString() },
-  ]);
-  if (remErr) console.error("Reminder insert failed:", remErr);
 
   revalidatePath(`/app/clients/${userId}`);
   return { ok: true };
@@ -1552,8 +1565,8 @@ export async function getAdminStatsForClient(userId: string, period: "week" | "m
     .gte("appointment_time", limit.toISOString());
 
   if (error) throw new Error(error.message);
-  const appointments = data || [];
 
+  const appointments = data || [];
   return {
     handled: appointments.length,
     confirmed: appointments.filter((a: any) => a.status === "confirmed").length,

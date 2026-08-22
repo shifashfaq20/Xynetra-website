@@ -950,14 +950,13 @@
 // }
 
 
-
+// src/app/(app)/app/dashboard/page.tsx
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAccount } from "@/lib/account";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminEmail } from "@/lib/admin/roles";
 import { listClients } from "@/lib/admin/actions";
-import type { AdminClient } from "@/lib/admin/actions";
 import { AdminControlPanel } from "@/components/admin/AdminControlPanel";
 
 import { StatsCards } from "@/components/dashbaord/StatsCards";
@@ -976,19 +975,20 @@ import {
 
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
 
+// ── 🛠️ PRODUCTION FIXES: FORCE NEXT.JS TO BYPASS STATIC GENERATION ──
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function DashboardPage() {
-  const account = (await getAccount())!;
+  const account = await getAccount();
+  
+  if (!account) {
+    redirect("/login");
+  }
 
-  /* Admin: Global Client Controller */
+  /* ── ADMIN: Global Client Controller ── */
   if (isAdminEmail(account.email)) {
-    let clients: AdminClient[] = [];
-    try {
-      clients = await listClients();
-    } catch (e: any) {
-      console.error("Admin listClients failed:", e.message || e);
-      clients = [];
-    }
-
+    const clients = await listClients();
     return (
       <div>
         <header className="mb-8 border-b border-grey-line pb-6">
@@ -1002,24 +1002,30 @@ export default async function DashboardPage() {
     );
   }
 
-  /* Client path */
+  /* ── GATE 1: billing first — unpaid users never see the app ── */
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("subscription_status, billing_region")
     .eq("id", account.userId)
     .single();
+    
+  if (profile?.subscription_status !== "active") {
+    redirect("/app/checkout");
+  }
 
-  if (profile?.subscription_status !== "active") redirect("/app/checkout");
-
+  /* ── GATE 2: onboarding must be complete ── */
   const { data: onboarding } = await supabase
     .from("onboarding")
     .select("completed_at")
     .eq("user_id", account.userId)
     .single();
+    
+  if (!onboarding?.completed_at) {
+    redirect("/onboarding");
+  }
 
-  if (!onboarding?.completed_at) redirect("/onboarding");
-
+  /* ── CLIENT: real operations dashboard ── */
   const [stats, appointments, reminders, waitlist, handoffs, clientRes] =
     await Promise.all([
       getDashboardStats("week"),
@@ -1054,7 +1060,10 @@ export default async function DashboardPage() {
       {paused && (
         <Banner tone="warn">
           Your service is paused — no reminders are going out. Resume it in{" "}
-          <a href="/app/settings" className="underline font-semibold">Settings</a>.
+          <a href="/app/settings" className="underline font-semibold">
+            Settings
+          </a>
+          .
         </Banner>
       )}
       {!paused && linePending && (
@@ -1065,6 +1074,7 @@ export default async function DashboardPage() {
       )}
 
       <StatsCards initialStats={stats} currency={currency} />
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <UpcomingAppointments appointments={appointments} />
         <WaitlistManager initialWaitlist={waitlist} readOnly={false} />
@@ -1078,10 +1088,20 @@ export default async function DashboardPage() {
   );
 }
 
-function Banner({ tone, children }: { tone: "warn" | "info"; children: React.ReactNode }) {
+function Banner({
+  tone,
+  children,
+}: {
+  tone: "warn" | "info";
+  children: React.ReactNode;
+}) {
   const cls =
     tone === "warn"
       ? "border-coral/40 bg-coral-light text-ink"
       : "border-grey-line bg-grey-light text-ink/70";
-  return <div className={`rounded-lg border px-4 py-3 font-body text-sm ${cls}`}>{children}</div>;
+  return (
+    <div className={`rounded-lg border px-4 py-3 font-body text-sm ${cls}`}>
+      {children}
+    </div>
+  );
 }
