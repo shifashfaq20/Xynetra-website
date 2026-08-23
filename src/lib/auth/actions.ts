@@ -447,144 +447,197 @@
 
 
 
- "use server";
+"use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
 
-export type AuthState = {
-  error?: string;
-  message?: string;
-  userId?: string;
-};
+export type AuthState = { error?: string; message?: string; userId?: string };
 
-function checkEnv() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return "Server misconfiguration: missing Supabase environment variables in production.";
-  }
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://xynetra.com";
+
+function checkEnv(): string | null {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.trim())
+    return "Server misconfiguration: NEXT_PUBLIC_SUPABASE_URL is missing.";
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim())
+    return "Server misconfiguration: NEXT_PUBLIC_SUPABASE_ANON_KEY is missing.";
   return null;
 }
 
+/** Supabase sometimes returns an error whose `message` stringifies to "{}". */
+function authMessage(scope: string, error: any, fallback: string): string {
+  console.error(
+    `[XYNETRA] ${scope}`,
+    JSON.stringify({
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      name: error?.name,
+    })
+  );
+  const m = error?.message;
+  if (!m || m === "{}" || m === "[object Object]") {
+    return error?.status ? `${fallback} (status ${error.status})` : fallback;
+  }
+  return m;
+}
+
+function str(fd: FormData, key: string): string {
+  const v = fd.get(key);
+  return typeof v === "string" ? v.trim() : "";
+}
+
 export async function signUp(
-  prevState: AuthState | undefined,
+  _prev: AuthState | undefined,
   formData: FormData
 ): Promise<AuthState> {
   try {
     const envErr = checkEnv();
     if (envErr) return { error: envErr };
 
+    const email = str(formData, "email").toLowerCase();
+    const password = String(formData.get("password") ?? "");
+    const fullName = str(formData, "fullName");
+    const businessName = str(formData, "businessName");
+    const rawRegion = str(formData, "billingRegion");
+    const billingRegion = ["international", "pakistan"].includes(rawRegion)
+      ? rawRegion
+      : "international";
+
+    if (!email) return { error: "Work email is required." };
+    if (!password) return { error: "Password is required." };
+    if (password.length < 8) return { error: "Password must be at least 8 characters." };
+
     const supabase = await createClient();
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const fullName = formData.get("fullName") as string;
-    const businessName = formData.get("businessName") as string;
-    const billingRegion = (formData.get("billingRegion") as string) || "international";
 
-    if (!email || !password) return { error: "Email and password are required." };
-
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          full_name: fullName || "",
-          business_name: businessName || "",
+          full_name: fullName,
+          business_name: businessName,
           billing_region: billingRegion,
         },
+        emailRedirectTo: `${APP_URL}/auth/callback?next=/app/checkout`,
       },
     });
 
-    if (signUpError) return { error: signUpError.message };
-    const user = authData.user;
-    if (!user) return { error: "Signup failed: no user returned." };
+    if (error) {
+      return { error: authMessage("signUp.auth", error, "Sign-up failed. Please try again.") };
+    }
+    if (!data.user) return { error: "No user returned from Supabase." };
 
-    await supabase.from("profiles").upsert({
-      id: user.id,
-      full_name: fullName || "",
-      business_name: businessName || "",
-      billing_region: billingRegion,
-      subscription_status: "inactive",
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "id" });
+    // NOTE: `profiles` and `clients` rows are created by the
+    // `on_auth_user_created` trigger. Do NOT upsert here — with email
+    // confirmation enabled there is no session yet, so RLS would reject it.
 
-    return { message: "Account created.", userId: user.id };
+    revalidatePath("/", "layout");
+
+    return data.session
+      ? { message: "Account created.", userId: data.user.id }
+      : { message: "Account created. Check your email to confirm.", userId: data.user.id };
   } catch (err: any) {
-    console.error("signUp crashed:", err);
-    return { error: err?.message || "Signup server error." };
+    console.error("[XYNETRA] signUp.threw", {
+      message: err?.message,
+      code: err?.cause?.code,
+      host: err?.cause?.hostname,
+    });
+    return {
+      error: err?.cause?.code
+        ? `Could not reach the auth service (${err.cause.code}).`
+        : err?.message && err.message !== "{}"
+        ? err.message
+        : "Server error during signup.",
+    };
   }
 }
 
 export async function signIn(
-  prevState: AuthState | undefined,
+  _prev: AuthState | undefined,
   formData: FormData
 ): Promise<AuthState> {
   try {
     const envErr = checkEnv();
     if (envErr) return { error: envErr };
 
-    const supabase = await createClient();
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    if (!email || !password) return { error: "Email and password are required." };
+    const email = str(formData, "email").toLowerCase();
+    const password = String(formData.get("password") ?? "");
+    if (!email || !password) return { error: "Email and password required." };
 
+    const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error: error.message };
+
+    if (error) {
+      return { error: authMessage("signIn.auth", error, "Invalid email or password.") };
+    }
+
+    revalidatePath("/", "layout");
     return { message: "Login successful.", userId: data.user?.id };
   } catch (err: any) {
-    console.error("signIn crashed:", err);
-    return { error: err?.message || "Login server error." };
+    console.error("[XYNETRA] signIn.threw", { message: err?.message, code: err?.cause?.code });
+    return { error: err?.message && err.message !== "{}" ? err.message : "Server error during login." };
   }
 }
 
 export async function requestPasswordReset(
-  prevState: AuthState | undefined,
+  _prev: AuthState | undefined,
   formData: FormData
 ): Promise<AuthState> {
   try {
     const envErr = checkEnv();
     if (envErr) return { error: envErr };
 
-    const supabase = await createClient();
-    const email = formData.get("email") as string;
-    if (!email) return { error: "Email is required." };
+    const email = str(formData, "email").toLowerCase();
+    if (!email) return { error: "Email required." };
 
+    const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "https://xynetra.com"}/auth/callback?next=/reset-password/update`,
+      redirectTo: `${APP_URL}/auth/callback?next=/reset-password/update`,
     });
-    if (error) return { error: error.message };
-    return { message: "Check your email for reset instructions." };
+
+    // Do not leak whether the address exists.
+    if (error) authMessage("requestPasswordReset", error, "reset error");
+
+    return { message: "If that email is registered, a reset link is on its way." };
   } catch (err: any) {
-    console.error("requestPasswordReset crashed:", err);
-    return { error: err?.message || "Reset server error." };
+    console.error("[XYNETRA] requestPasswordReset.threw", err?.message);
+    return { message: "If that email is registered, a reset link is on its way." };
   }
 }
 
 export async function updatePassword(
-  prevState: AuthState | undefined,
+  _prev: AuthState | undefined,
   formData: FormData
 ): Promise<AuthState> {
   try {
     const envErr = checkEnv();
     if (envErr) return { error: envErr };
 
-    const supabase = await createClient();
-    const password = formData.get("password") as string;
-    if (!password || password.length < 6) return { error: "Password must be at least 6 characters." };
+    const password = String(formData.get("password") ?? "");
+    if (password.length < 8) return { error: "Password must be at least 8 characters." };
 
+    const supabase = await createClient();
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) return { error: error.message };
+
+    if (error) {
+      return { error: authMessage("updatePassword", error, "Could not update password.") };
+    }
+
+    revalidatePath("/", "layout");
     return { message: "Password updated." };
   } catch (err: any) {
-    console.error("updatePassword crashed:", err);
-    return { error: err?.message || "Update server error." };
+    console.error("[XYNETRA] updatePassword.threw", err?.message);
+    return { error: "Server error while updating password." };
   }
 }
 
-export async function signOut(formData?: FormData): Promise<void> {
+export async function signOut(): Promise<void> {
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
   } catch (err: any) {
-    console.error("signOut crashed:", err);
+    console.error("[XYNETRA] signOut", err?.message);
   }
+  revalidatePath("/", "layout");
 }

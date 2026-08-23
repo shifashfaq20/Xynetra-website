@@ -1,442 +1,78 @@
+
 // import { createServerClient, type CookieOptions } from "@supabase/ssr";
 // import { NextResponse, type NextRequest } from "next/server";
 
 // type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-// // Refreshes the Supabase session cookie and guards /app routes.
-// export async function updateSession(request: NextRequest) {
+// export async function proxy(request: NextRequest) {
 //   let supabaseResponse = NextResponse.next({ request });
-
-//   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-//   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-//   // Without Supabase configured, don't attempt auth — let pages render.
-//   if (!url || !key) return supabaseResponse;
-
-//   const supabase = createServerClient(url, key, {
-//     cookies: {
-//       getAll() {
-//         return request.cookies.getAll();
-//       },
-//       setAll(cookiesToSet: CookieToSet[]) {
-//         cookiesToSet.forEach(({ name, value }) =>
-//           request.cookies.set(name, value)
-//         );
-//         supabaseResponse = NextResponse.next({ request });
-//         cookiesToSet.forEach(({ name, value, options }) =>
-//           supabaseResponse.cookies.set(name, value, options)
-//         );
-//       },
-//     },
-//   });
-
-//   const {
-//     data: { user },
-//   } = await supabase.auth.getUser();
-
-//   const path = request.nextUrl.pathname;
-//   const isAppRoute = path.startsWith("/app");
-//   const isAuthRoute =
-//     path.startsWith("/login") ||
-//     path.startsWith("/signup") ||
-//     path.startsWith("/reset-password");
-
-//   if (isAppRoute && !user) {
-//     const redirectUrl = request.nextUrl.clone();
-//     redirectUrl.pathname = "/login";
-//     redirectUrl.searchParams.set("next", path);
-//     return NextResponse.redirect(redirectUrl);
-//   }
-
-//   if (isAuthRoute && user) {
-//     const redirectUrl = request.nextUrl.clone();
-//     redirectUrl.pathname = "/app/dashboard";
-//     redirectUrl.search = "";
-//     return NextResponse.redirect(redirectUrl);
-//   }
-
-//   return supabaseResponse;
-// }
-
-
-
-
-
-// // src/lib/supabase/middleware.ts
-// import { createServerClient } from '@supabase/ssr'
-// import { NextResponse, type NextRequest } from 'next/server'
-
-// export async function updateSession(request: NextRequest) {
-//   let supabaseResponse = NextResponse.next({ request })
-
 //   const supabase = createServerClient(
 //     process.env.NEXT_PUBLIC_SUPABASE_URL!,
 //     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
 //     {
 //       cookies: {
-//         getAll() {
-//           return request.cookies.getAll()
-//         },
-//         setAll(cookiesToSet) {
-//           cookiesToSet.forEach(({ name, value }) =>
-//             request.cookies.set(name, value)
-//           )
-//           supabaseResponse = NextResponse.next({ request })
-//           cookiesToSet.forEach(({ name, value, options }) =>
-//             supabaseResponse.cookies.set(name, value, options)
-//           )
-//         },
-//       },
-//     }
-//   )
-
-//   // Refresh the session — important: do NOT remove this
-//   const {
-//     data: { user },
-//   } = await supabase.auth.getUser()
-
-//   // Protect /app and /onboarding routes
-//   if (
-//     !user &&
-//     (request.nextUrl.pathname.startsWith('/app') ||
-//       request.nextUrl.pathname.startsWith('/onboarding'))
-//   ) {
-//     const url = request.nextUrl.clone()
-//     url.pathname = '/login'
-//     return NextResponse.redirect(url)
-//   }
-
-//   // Redirect authenticated users away from login/signup
-//   if (
-//     user &&
-//     (request.nextUrl.pathname === '/login' ||
-//       request.nextUrl.pathname === '/signup')
-//   ) {
-//     const url = request.nextUrl.clone()
-//     url.pathname = '/app/dashboard'
-//     return NextResponse.redirect(url)
-//   }
-
-//   return supabaseResponse
-// }
-
-
-
-
-// // src/lib/supabase/middleware.ts
-// import { createServerClient } from '@supabase/ssr'
-// import { NextResponse, type NextRequest } from 'next/server'
-
-// export async function updateSession(request: NextRequest) {
-//   let supabaseResponse = NextResponse.next({ request })
-
-//   const supabase = createServerClient(
-//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-//     {
-//       cookies: {
-//         getAll() {
-//           return request.cookies.getAll()
-//         },
-//         setAll(cookiesToSet) {
-//           cookiesToSet.forEach(({ name, value }) =>
-//             request.cookies.set(name, value)
-//           )
-//           supabaseResponse = NextResponse.next({ request })
-//           cookiesToSet.forEach(({ name, value, options }) =>
-//             supabaseResponse.cookies.set(name, value, options)
-//           )
-//         },
-//       },
-//     }
-//   )
-
-//   // Refresh the session — important: do NOT remove this
-//   const {
-//     data: { user },
-//   } = await supabase.auth.getUser()
-
-//   const path = request.nextUrl.pathname
-
-//   // 1) Not logged in → block /app and /onboarding, remember destination
-//   if (
-//     !user &&
-//     (path.startsWith('/app') || path.startsWith('/onboarding'))
-//   ) {
-//     const url = request.nextUrl.clone()
-//     url.pathname = '/login'
-//     url.searchParams.set('next', path)
-//     return NextResponse.redirect(url)
-//   }
-
-//   // 2) Logged in → enforce payment gate on /onboarding and /app
-//   //    (except /app/checkout and /app/billing which unpaid users need)
-//   if (
-//     user &&
-//     (path.startsWith('/onboarding') || path.startsWith('/app'))
-//   ) {
-//     const allowedWhenUnpaid =
-//       path.startsWith('/app/checkout') || path.startsWith('/app/billing')
-
-//     if (!allowedWhenUnpaid) {
-//       const { data: profile } = await supabase
-//         .from('profiles')
-//         .select('subscription_status')
-//         .eq('id', user.id)
-//         .single()
-
-//       if (profile?.subscription_status !== 'active') {
-//         const url = request.nextUrl.clone()
-//         url.pathname = '/app/checkout'
-//         return NextResponse.redirect(url)
-//       }
-//     }
-//   }
-
-//   // 3) Logged-in users shouldn't sit on login/signup
-//   if (
-//     user &&
-//     (path === '/login' || path === '/signup')
-//   ) {
-//     const url = request.nextUrl.clone()
-//     url.pathname = '/app/dashboard'
-//     return NextResponse.redirect(url)
-//   }
-
-//   return supabaseResponse
-// }
-
-
-// // src/lib/supabase/middleware.ts
-// import { createServerClient, type CookieOptions } from "@supabase/ssr";
-// import { NextResponse, type NextRequest } from "next/server";
-
-// type CookieToSet = {
-//   name: string;
-//   value: string;
-//   options?: CookieOptions;
-// };
-
-// export async function updateSession(request: NextRequest) {
-//   let supabaseResponse = NextResponse.next({
-//     request,
-//   });
-
-//   const supabase = createServerClient(
-//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-//     {
-//       cookies: {
-//         getAll() {
-//           return request.cookies.getAll();
-//         },
-
+//         getAll() { return request.cookies.getAll(); },
 //         setAll(cookiesToSet: CookieToSet[]) {
-//           cookiesToSet.forEach((cookie: CookieToSet) => {
-//             request.cookies.set(cookie.name, cookie.value);
-//           });
-
-//           supabaseResponse = NextResponse.next({
-//             request,
-//           });
-
-//           cookiesToSet.forEach((cookie: CookieToSet) => {
-//             supabaseResponse.cookies.set(
-//               cookie.name,
-//               cookie.value,
-//               cookie.options
-//             );
-//           });
-//         },
-//       },
-//     }
-//   );
-
-//   const {
-//     data: { user },
-//   } = await supabase.auth.getUser();
-
-//   const path = request.nextUrl.pathname;
-
-//   // Not logged in: block protected areas.
-//   if (!user && (path.startsWith("/app") || path.startsWith("/onboarding"))) {
-//     const url = request.nextUrl.clone();
-
-//     url.pathname = "/login";
-//     url.searchParams.set("next", path);
-
-//     return NextResponse.redirect(url);
-//   }
-
-//   // Logged-in but not paid: send to checkout.
-//   if (user && (path.startsWith("/onboarding") || path.startsWith("/app"))) {
-//     const allowedWhenUnpaid =
-//       path.startsWith("/app/checkout") || path.startsWith("/app/billing");
-
-//     if (!allowedWhenUnpaid) {
-//       const { data: profile } = await supabase
-//         .from("profiles")
-//         .select("subscription_status")
-//         .eq("id", user.id)
-//         .single();
-
-//       if (profile?.subscription_status !== "active") {
-//         const url = request.nextUrl.clone();
-
-//         url.pathname = "/app/checkout";
-
-//         return NextResponse.redirect(url);
-//       }
-//     }
-//   }
-
-//   // Logged-in users do not need login/signup pages.
-//   if (user && (path === "/login" || path === "/signup")) {
-//     const url = request.nextUrl.clone();
-
-//     url.pathname = "/app/dashboard";
-
-//     return NextResponse.redirect(url);
-//   }
-
-//   return supabaseResponse;
-// }
-
-
-// import { createServerClient, type CookieOptions } from "@supabase/ssr";
-// import { NextResponse, type NextRequest } from "next/server";
-
-// type CookieToSet = {
-//   name: string;
-//   value: string;
-//   options?: CookieOptions;
-// };
-
-// export async function updateSession(request: NextRequest) {
-//   let supabaseResponse = NextResponse.next({
-//     request,
-//   });
-
-//   const supabase = createServerClient(
-//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-//     {
-//       cookies: {
-//         getAll() {
-//           return request.cookies.getAll();
-//         },
-//         setAll(cookiesToSet: CookieToSet[]) {
-//           cookiesToSet.forEach((cookie: CookieToSet) => {
-//             request.cookies.set(cookie.name, cookie.value);
-//           });
-//           supabaseResponse = NextResponse.next({
-//             request,
-//           });
-//           cookiesToSet.forEach((cookie: CookieToSet) => {
-//             supabaseResponse.cookies.set(
-//               cookie.name,
-//               cookie.value,
-//               cookie.options
-//             );
-//           });
+//           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+//           supabaseResponse = NextResponse.next({ request });
+//           cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options));
 //         },
 //       },
 //     }
 //   );
 
 //   let user: any = null;
-//   try {
-//     const { data } = await supabase.auth.getUser();
-//     user = data.user;
-//   } catch {
-//     // DB/auth unreachable — allow request through, don't crash
-//   }
+//   try { const { data } = await supabase.auth.getUser(); user = data.user; } catch {}
 
 //   const path = request.nextUrl.pathname;
-
-//   // Not logged in: block protected areas.
 //   if (!user && (path.startsWith("/app") || path.startsWith("/onboarding"))) {
-//     const url = request.nextUrl.clone();
-//     url.pathname = "/login";
-//     url.searchParams.set("next", path);
+//     const url = request.nextUrl.clone(); url.pathname = "/login"; url.searchParams.set("next", path);
 //     return NextResponse.redirect(url);
 //   }
 
-//   // Logged-in but not paid: send to checkout.
 //   if (user && (path.startsWith("/onboarding") || path.startsWith("/app"))) {
-//     const allowedWhenUnpaid =
-//       path.startsWith("/app/checkout") || path.startsWith("/app/billing");
-
-//     if (!allowedWhenUnpaid) {
+//     const allowed = path.startsWith("/app/checkout") || path.startsWith("/app/billing");
+//     if (!allowed) {
 //       let profile: any = null;
-//       try {
-//         const res = await supabase
-//           .from("profiles")
-//           .select("subscription_status")
-//           .eq("id", user.id)
-//           .single();
-//         profile = res.data;
-//       } catch {
-//         profile = null;
-//       }
-
+//       try { const r = await supabase.from("profiles").select("subscription_status").eq("id", user.id).single(); profile = r.data; } catch {}
 //       if (profile?.subscription_status !== "active") {
-//         const url = request.nextUrl.clone();
-//         url.pathname = "/app/checkout";
-//         return NextResponse.redirect(url);
+//         const url = request.nextUrl.clone(); url.pathname = "/app/checkout"; return NextResponse.redirect(url);
 //       }
 //     }
 //   }
 
-//   // Logged-in users do not need login/signup pages.
 //   if (user && (path === "/login" || path === "/signup")) {
-//     const url = request.nextUrl.clone();
-//     url.pathname = "/app/dashboard";
-//     return NextResponse.redirect(url);
+//     const url = request.nextUrl.clone(); url.pathname = "/app/dashboard"; return NextResponse.redirect(url);
 //   }
 
 //   return supabaseResponse;
 // }
 
-// export const config = {
-//   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-// };
-
+// export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };
 
 
 
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminEmail } from "@/lib/admin/roles";
 
-type CookieToSet = {
-  name: string;
-  value: string;
-  options?: CookieOptions;
-};
+type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-export async function proxy(request: NextRequest) {  // ← WAS updateSession
-  let supabaseResponse = NextResponse.next({ request });
+export async function updateSession(request: NextRequest) {
+  let res = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
+        getAll: () => request.cookies.getAll(),
         setAll(cookiesToSet: CookieToSet[]) {
-          cookiesToSet.forEach((cookie: CookieToSet) => {
-            request.cookies.set(cookie.name, cookie.value);
-          });
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach((cookie: CookieToSet) => {
-            supabaseResponse.cookies.set(
-              cookie.name,
-              cookie.value,
-              cookie.options
-            );
-          });
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          res = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options)
+          );
         },
       },
     }
@@ -446,35 +82,45 @@ export async function proxy(request: NextRequest) {  // ← WAS updateSession
   try {
     const { data } = await supabase.auth.getUser();
     user = data.user;
-  } catch {
-    // DB/auth unreachable
+  } catch (e) {
+    console.error("[XYNETRA] middleware.getUser", e);
   }
 
   const path = request.nextUrl.pathname;
+  const isProtected = path.startsWith("/app") || path.startsWith("/onboarding");
 
-  if (!user && (path.startsWith("/app") || path.startsWith("/onboarding"))) {
+  if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
 
-  if (user && (path.startsWith("/onboarding") || path.startsWith("/app"))) {
-    const allowedWhenUnpaid =
-      path.startsWith("/app/checkout") || path.startsWith("/app/billing");
-    if (!allowedWhenUnpaid) {
-      let profile: any = null;
+  if (user && isProtected) {
+    const admin = isAdminEmail(user.email ?? "");
+    const exempt =
+      admin ||
+      path.startsWith("/app/checkout") ||
+      path.startsWith("/app/billing") ||
+      path.startsWith("/app/admin");
+
+    if (!exempt) {
+      let status: string | null = null;
       try {
-        const res = await supabase
+        const { data, error } = await supabase
           .from("profiles")
           .select("subscription_status")
           .eq("id", user.id)
-          .single();
-        profile = res.data;
-      } catch {
-        profile = null;
+          .maybeSingle();
+        if (error) console.error("[XYNETRA] middleware.profile", error.message);
+        status = data?.subscription_status ?? null;
+      } catch (e) {
+        console.error("[XYNETRA] middleware.profile.threw", e);
       }
-      if (profile?.subscription_status !== "active") {
+
+      // Only redirect on a KNOWN-inactive status. A query failure must not
+      // trap every user in a checkout loop.
+      if (status !== null && status !== "active") {
         const url = request.nextUrl.clone();
         url.pathname = "/app/checkout";
         return NextResponse.redirect(url);
@@ -484,13 +130,9 @@ export async function proxy(request: NextRequest) {  // ← WAS updateSession
 
   if (user && (path === "/login" || path === "/signup")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/app/dashboard";
+    url.pathname = isAdminEmail(user.email ?? "") ? "/app/admin" : "/app/dashboard";
     return NextResponse.redirect(url);
   }
 
-  return supabaseResponse;
+  return res;
 }
-
-export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
-};
