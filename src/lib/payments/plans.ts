@@ -1,6 +1,11 @@
+
+
+
 // export type BillingPeriod = "monthly" | "annual";
 
 // export type PlanId = "starter" | "growth" | "scale";
+
+// export type Region = "US" | "UK" | "AUS" | "GULF" | "PK";
 
 // export type Plan = {
 //   id: PlanId;
@@ -16,8 +21,7 @@
 //   featured?: boolean;
 //   /** Paddle price IDs — paste your real ones here */
 //   priceIds: Record<BillingPeriod, string>;
-//   /** Optional: a one-time Paddle price ID to charge the setup fee automatically.
-//    *  Leave undefined if you collect setup manually / out-of-band. */
+//   /** Optional: a one-time Paddle price ID to charge the setup fee automatically. */
 //   setupPriceId?: string;
 // };
 
@@ -42,7 +46,8 @@
 //       monthly: "pri_01kx5ycc121x46tefe99vy8hhj",
 //       annual: "pri_01kx5zxprpq95p3vf4v3a44xq5",
 //     },
-//     // setupPriceId: "pri_REPLACE_STARTER_SETUP",
+//     // Attached the global setup fee ID
+//     setupPriceId: "pri_01kx60pvyvf8bcq444n3khcd6z",
 //   },
 //   {
 //     id: "growth",
@@ -64,7 +69,8 @@
 //       monthly: "pri_01kx5zf321z7adb86stytpe41d",
 //       annual: "pri_01kx606fn9fmgahgspyd15k9av",
 //     },
-//     // setupPriceId: "pri_REPLACE_GROWTH_SETUP",
+//     // Attached the global setup fee ID
+//     setupPriceId: "pri_01kx60pvyvf8bcq444n3khcd6z",
 //   },
 //   {
 //     id: "scale",
@@ -84,7 +90,8 @@
 //       monthly: "pri_01kx5zktzwcqrmt9sxnswemb7p",
 //       annual: "pri_01kx60df302bqh9kj7hr7dzwmy",
 //     },
-//     // setupPriceId: "pri_REPLACE_SCALE_SETUP",
+//     // Attached the global setup fee ID
+//     setupPriceId: "pri_01kx60pvyvf8bcq444n3khcd6z",
 //   },
 // ];
 
@@ -111,14 +118,15 @@
 // export type PendingCheckout = {
 //   plan: PlanId;
 //   billing: BillingPeriod;
+//   region?: Region;
 //   ts: number;
 // };
 
-// export function savePendingCheckout(plan: PlanId, billing: BillingPeriod) {
+// export function savePendingCheckout(plan: PlanId, billing: BillingPeriod, region?: Region) {
 //   if (typeof window === "undefined") return;
 //   window.localStorage.setItem(
 //     PENDING_CHECKOUT_KEY,
-//     JSON.stringify({ plan, billing, ts: Date.now() } satisfies PendingCheckout),
+//     JSON.stringify({ plan, billing, region, ts: Date.now() } satisfies PendingCheckout),
 //   );
 // }
 
@@ -148,6 +156,7 @@
 // }
 
 
+
 export type BillingPeriod = "monthly" | "annual";
 
 export type PlanId = "starter" | "growth" | "scale";
@@ -166,9 +175,9 @@ export type Plan = {
   setup: number;
   features: string[];
   featured?: boolean;
-  /** Paddle price IDs — paste your real ones here */
+  /** Paddle price IDs */
   priceIds: Record<BillingPeriod, string>;
-  /** Optional: a one-time Paddle price ID to charge the setup fee automatically. */
+  /** Optional one-time Paddle price ID for setup fee */
   setupPriceId?: string;
 };
 
@@ -193,7 +202,6 @@ export const PLANS: Plan[] = [
       monthly: "pri_01kx5ycc121x46tefe99vy8hhj",
       annual: "pri_01kx5zxprpq95p3vf4v3a44xq5",
     },
-    // Attached the global setup fee ID
     setupPriceId: "pri_01kx60pvyvf8bcq444n3khcd6z",
   },
   {
@@ -216,7 +224,6 @@ export const PLANS: Plan[] = [
       monthly: "pri_01kx5zf321z7adb86stytpe41d",
       annual: "pri_01kx606fn9fmgahgspyd15k9av",
     },
-    // Attached the global setup fee ID
     setupPriceId: "pri_01kx60pvyvf8bcq444n3khcd6z",
   },
   {
@@ -237,26 +244,28 @@ export const PLANS: Plan[] = [
       monthly: "pri_01kx5zktzwcqrmt9sxnswemb7p",
       annual: "pri_01kx60df302bqh9kj7hr7dzwmy",
     },
-    // Attached the global setup fee ID
     setupPriceId: "pri_01kx60pvyvf8bcq444n3khcd6z",
   },
 ];
 
-export const PLAN_MAP = Object.fromEntries(
-  PLANS.map((p) => [p.id, p]),
-) as Record<PlanId, Plan>;
+export const PLAN_MAP = Object.fromEntries(PLANS.map((p) => [p.id, p])) as Record<
+  PlanId,
+  Plan
+>;
 
 export const PADDLE_CLIENT_TOKEN =
   process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? "";
 
-export const money = (n: number) =>
-  `${CURRENCY}${n.toLocaleString("en-US")}`;
+export const money = (n: number) => `${CURRENCY}${n.toLocaleString("en-US")}`;
 
 export const isPlanId = (x: unknown): x is PlanId =>
   typeof x === "string" && x in PLAN_MAP;
 
 export const isBilling = (x: unknown): x is BillingPeriod =>
   x === "monthly" || x === "annual";
+
+export const isRegion = (x: unknown): x is Region =>
+  x === "US" || x === "UK" || x === "AUS" || x === "GULF" || x === "PK";
 
 /* ---------------- localStorage handoff (client only) ---------------- */
 export const PENDING_CHECKOUT_KEY = "xynetra_pending_checkout";
@@ -269,12 +278,19 @@ export type PendingCheckout = {
   ts: number;
 };
 
-export function savePendingCheckout(plan: PlanId, billing: BillingPeriod, region?: Region) {
+export function savePendingCheckout(
+  plan: PlanId,
+  billing: BillingPeriod,
+  region?: Region
+) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(
-    PENDING_CHECKOUT_KEY,
-    JSON.stringify({ plan, billing, region, ts: Date.now() } satisfies PendingCheckout),
-  );
+  const payload: PendingCheckout = {
+    plan,
+    billing,
+    region,
+    ts: Date.now(),
+  };
+  window.localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify(payload));
 }
 
 export function readPendingCheckout(): PendingCheckout | null {
@@ -300,4 +316,18 @@ export function readPendingCheckout(): PendingCheckout | null {
 export function clearPendingCheckout() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(PENDING_CHECKOUT_KEY);
+}
+
+/** Build checkout URL with plan query (also pair with savePendingCheckout). */
+export function checkoutPath(
+  plan: PlanId,
+  billing: BillingPeriod,
+  region?: Region
+): string {
+  const q = new URLSearchParams({
+    plan,
+    billing,
+    ...(region ? { region } : {}),
+  });
+  return `/app/checkout?${q.toString()}`;
 }
