@@ -1,115 +1,5 @@
 // import { NextResponse } from 'next/server'
 // import crypto from 'crypto'
-// import { createServiceClient, createAuthAdminClient } from '@/lib/supabase/service'
-
-// const SECRET = process.env.PADDLE_WEBHOOK_SECRET || ''
-
-// // Paddle signs: "ts:rawBody" with HMAC-SHA256 → compare against h1
-// function verifySignature(rawBody: string, header: string | null): boolean {
-//   if (!header || !SECRET) return false
-//   const parts = Object.fromEntries(
-//     header.split(';').map((p) => {
-//       const i = p.indexOf('=')
-//       return [p.slice(0, i), p.slice(i + 1)]
-//     })
-//   )
-//   const ts = parts['ts']
-//   const h1 = parts['h1']
-//   if (!ts || !h1) return false
-//   const expected = crypto
-//     .createHmac('sha256', SECRET)
-//     .update(`${ts}:${rawBody}`)
-//     .digest('hex')
-//   try {
-//     return crypto.timingSafeEqual(Buffer.from(h1), Buffer.from(expected))
-//   } catch {
-//     return false
-//   }
-// }
-
-
-
-
-// const ACTIVATE_EVENTS = new Set([
-//   'subscription.activated',
-//   'subscription.created',
-//   'subscription.trialing',
-//   'transaction.completed',
-// ])
-// const STATUS_MAP: Record<string, string> = {
-//   'subscription.past_due': 'past_due',
-//   'subscription.canceled': 'cancelled',
-//   'subscription.paused': 'inactive',
-// }
-
-// export async function POST(req: Request) {
-//   const rawBody = await req.text()
-//   const signature = req.headers.get('paddle-signature')
-
-//   if (!verifySignature(rawBody, signature)) {
-//     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-//   }
-
-//   let event: any
-//   try {
-//     event = JSON.parse(rawBody)
-//   } catch {
-//     return NextResponse.json({ error: 'Bad JSON' }, { status: 400 })
-//   }
-
-//   const type: string = event?.event_type ?? ''
-//   const data: any = event?.data ?? {}
-
-//   let newStatus: string | null = null
-//   if (ACTIVATE_EVENTS.has(type)) newStatus = 'active'
-//   else if (STATUS_MAP[type]) newStatus = STATUS_MAP[type]
-
-//   if (!newStatus) {
-//     return NextResponse.json({ received: true, ignored: type })
-//   }
-
-//   // Locate the buyer — prefer custom_data passed at checkout, fall back to
-//   // the customer object Paddle embeds on some events.
-//   const email: string | null =
-//     data?.custom_data?.email ?? data?.customer?.email ?? data?.customer_email ?? null
-
-//   if (!email) {
-//     console.error(`Paddle webhook ${type}: no email found in payload`)
-//     return NextResponse.json({ received: true, warning: 'no email in payload' })
-//   }
-
-//   // Email → auth user id (same mechanism admin listClients uses)
-//   const auth = createAuthAdminClient()
-//   const { data: users } = await auth
-//     .from('users')
-//     .select('id, email')
-//     .eq('email', email.toLowerCase())
-
-//   const userId = users?.[0]?.id
-//   if (!userId) {
-//     console.error(`Paddle webhook ${type}: no user for ${email}`)
-//     return NextResponse.json({ received: true, warning: 'user not found' })
-//   }
-
-//   const svc = createServiceClient()
-//   await svc
-//     .from('profiles')
-//     .update({ subscription_status: newStatus })
-//     .eq('id', userId)
-//   await svc
-//     .from('clients')
-//     .update({ subscription_status: newStatus, updated_at: new Date().toISOString() })
-//     .eq('id', userId)
-
-//   return NextResponse.json({ received: true, status: newStatus })
-// }
-
-
-
-
-
-// import { NextResponse } from 'next/server'
-// import crypto from 'crypto'
 // import {
 //   createServiceClient,
 //   createAuthAdminClient,
@@ -184,162 +74,198 @@
 //     null
 
 //   if (!email) {
-//     console.error(`Paddle webhook ${type}: no email found in payload`)
-//     return NextResponse.json({ received: true, warning: 'no email in payload' })
+//     console.error(`Paddle webhook ${type}: no email in payload`)
+//     return NextResponse.json({ received: true, warning: 'no email' })
 //   }
 
-//   // Email → auth user id via Admin API (reliable)
+//   // Email → user id via Admin API (reliable)
 //   const auth = createAuthAdminClient()
 //   const { data: list } = await auth.auth.admin.listUsers()
 //   const matchedUser = list?.users?.find(
 //     (u: any) => u.email?.toLowerCase() === email.toLowerCase()
 //   )
 //   const userId = matchedUser?.id
-
 //   if (!userId) {
 //     console.error(`Paddle webhook ${type}: no user for ${email}`)
 //     return NextResponse.json({ received: true, warning: 'user not found' })
 //   }
 
 //   const svc = createServiceClient()
+
+//   // 1) Flip subscription status
 //   await svc
 //     .from('profiles')
 //     .update({ subscription_status: newStatus })
 //     .eq('id', userId)
+
+//   // 2) Record a real invoice on completed transactions
+//   if (type === 'transaction.completed') {
+//     const txId: string = data?.id ?? ''
+//     const totals = data?.details?.totals ?? data?.totals ?? {}
+//     const amountMinor = Number(totals?.grand_total ?? totals?.total ?? 0)
+//     const currency: string =
+//       data?.currency_code ?? totals?.currency_code ?? 'USD'
+//     const now = new Date()
+
+//     await svc.from('invoices').upsert(
+//       {
+//         user_id: userId,
+//         number: data?.invoice_number ?? txId,
+//         paddle_transaction_id: txId,
+//         amount: amountMinor / 100, // Paddle sends minor units
+//         currency,
+//         status: 'paid',
+//         issued_at: now.toISOString().slice(0, 10),
+//         due_at: now.toISOString().slice(0, 10),
+//         period: now.toLocaleString('en-US', {
+//           month: 'long',
+//           year: 'numeric',
+//         }),
+//       },
+//       { onConflict: 'paddle_transaction_id' }
+//     )
+//   }
 
 //   return NextResponse.json({ received: true, status: newStatus })
 // }
 
 
 
-
-import { NextResponse } from 'next/server'
-import crypto from 'crypto'
+import { NextResponse } from "next/server";
+import crypto from "crypto";
 import {
   createServiceClient,
   createAuthAdminClient,
-} from '@/lib/supabase/service'
+} from "@/lib/supabase/service";
 
-const SECRET = process.env.PADDLE_WEBHOOK_SECRET || ''
+const SECRET = process.env.PADDLE_WEBHOOK_SECRET || "";
 
 function verifySignature(rawBody: string, header: string | null): boolean {
-  if (!header || !SECRET) return false
+  if (!header || !SECRET) return false;
   const parts = Object.fromEntries(
-    header.split(';').map((p) => {
-      const i = p.indexOf('=')
-      return [p.slice(0, i), p.slice(i + 1)]
+    header.split(";").map((p) => {
+      const i = p.indexOf("=");
+      return [p.slice(0, i), p.slice(i + 1)];
     })
-  )
-  const ts = parts['ts']
-  const h1 = parts['h1']
-  if (!ts || !h1) return false
+  );
+  const ts = parts["ts"];
+  const h1 = parts["h1"];
+  if (!ts || !h1) return false;
   const expected = crypto
-    .createHmac('sha256', SECRET)
+    .createHmac("sha256", SECRET)
     .update(`${ts}:${rawBody}`)
-    .digest('hex')
+    .digest("hex");
   try {
-    return crypto.timingSafeEqual(Buffer.from(h1), Buffer.from(expected))
+    return crypto.timingSafeEqual(Buffer.from(h1), Buffer.from(expected));
   } catch {
-    return false
+    return false;
   }
 }
 
 const ACTIVATE_EVENTS = new Set([
-  'subscription.activated',
-  'subscription.created',
-  'subscription.trialing',
-  'transaction.completed',
-])
+  "subscription.activated",
+  "subscription.created",
+  "subscription.trialing",
+  "transaction.completed",
+]);
+
 const STATUS_MAP: Record<string, string> = {
-  'subscription.past_due': 'past_due',
-  'subscription.canceled': 'cancelled',
-  'subscription.paused': 'inactive',
-}
+  "subscription.past_due": "past_due",
+  "subscription.canceled": "cancelled",
+  "subscription.paused": "inactive",
+};
 
 export async function POST(req: Request) {
-  const rawBody = await req.text()
-  const signature = req.headers.get('paddle-signature')
+  const rawBody = await req.text();
+  const signature = req.headers.get("paddle-signature");
 
   if (!verifySignature(rawBody, signature)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  let event: any
+  let event: any;
   try {
-    event = JSON.parse(rawBody)
+    event = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ error: 'Bad JSON' }, { status: 400 })
+    return NextResponse.json({ error: "Bad JSON" }, { status: 400 });
   }
 
-  const type: string = event?.event_type ?? ''
-  const data: any = event?.data ?? {}
+  const type: string = event?.event_type ?? "";
+  const data: any = event?.data ?? {};
 
-  let newStatus: string | null = null
-  if (ACTIVATE_EVENTS.has(type)) newStatus = 'active'
-  else if (STATUS_MAP[type]) newStatus = STATUS_MAP[type]
+  let newStatus: string | null = null;
+  if (ACTIVATE_EVENTS.has(type)) newStatus = "active";
+  else if (STATUS_MAP[type]) newStatus = STATUS_MAP[type];
 
   if (!newStatus) {
-    return NextResponse.json({ received: true, ignored: type })
+    return NextResponse.json({ received: true, ignored: type });
   }
 
   const email: string | null =
     data?.custom_data?.email ??
     data?.customer?.email ??
     data?.customer_email ??
-    null
+    null;
 
   if (!email) {
-    console.error(`Paddle webhook ${type}: no email in payload`)
-    return NextResponse.json({ received: true, warning: 'no email' })
+    console.error(`Paddle webhook ${type}: no email in payload`);
+    return NextResponse.json({ received: true, warning: "no email" });
   }
 
-  // Email → user id via Admin API (reliable)
-  const auth = createAuthAdminClient()
-  const { data: list } = await auth.auth.admin.listUsers()
+  const auth = createAuthAdminClient();
+  const { data: list } = await auth.auth.admin.listUsers();
   const matchedUser = list?.users?.find(
     (u: any) => u.email?.toLowerCase() === email.toLowerCase()
-  )
-  const userId = matchedUser?.id
+  );
+  const userId = matchedUser?.id;
   if (!userId) {
-    console.error(`Paddle webhook ${type}: no user for ${email}`)
-    return NextResponse.json({ received: true, warning: 'user not found' })
+    console.error(`Paddle webhook ${type}: no user for ${email}`);
+    return NextResponse.json({ received: true, warning: "user not found" });
   }
 
-  const svc = createServiceClient()
+  const svc = createServiceClient();
+  const stamp = new Date().toISOString();
 
-  // 1) Flip subscription status
   await svc
-    .from('profiles')
-    .update({ subscription_status: newStatus })
-    .eq('id', userId)
+    .from("profiles")
+    .update({ subscription_status: newStatus, updated_at: stamp })
+    .eq("id", userId);
 
-  // 2) Record a real invoice on completed transactions
-  if (type === 'transaction.completed') {
-    const txId: string = data?.id ?? ''
-    const totals = data?.details?.totals ?? data?.totals ?? {}
-    const amountMinor = Number(totals?.grand_total ?? totals?.total ?? 0)
+  await svc.from("clients").upsert(
+    {
+      id: userId,
+      subscription_status: newStatus,
+      updated_at: stamp,
+    },
+    { onConflict: "id" }
+  );
+
+  if (type === "transaction.completed") {
+    const txId: string = data?.id ?? "";
+    const totals = data?.details?.totals ?? data?.totals ?? {};
+    const amountMinor = Number(totals?.grand_total ?? totals?.total ?? 0);
     const currency: string =
-      data?.currency_code ?? totals?.currency_code ?? 'USD'
-    const now = new Date()
+      data?.currency_code ?? totals?.currency_code ?? "USD";
+    const now = new Date();
 
-    await svc.from('invoices').upsert(
+    await svc.from("invoices").upsert(
       {
         user_id: userId,
         number: data?.invoice_number ?? txId,
         paddle_transaction_id: txId,
-        amount: amountMinor / 100, // Paddle sends minor units
+        amount: amountMinor / 100,
         currency,
-        status: 'paid',
+        status: "paid",
         issued_at: now.toISOString().slice(0, 10),
         due_at: now.toISOString().slice(0, 10),
-        period: now.toLocaleString('en-US', {
-          month: 'long',
-          year: 'numeric',
+        period: now.toLocaleString("en-US", {
+          month: "long",
+          year: "numeric",
         }),
       },
-      { onConflict: 'paddle_transaction_id' }
-    )
+      { onConflict: "paddle_transaction_id" }
+    );
   }
 
-  return NextResponse.json({ received: true, status: newStatus })
+  return NextResponse.json({ received: true, status: newStatus });
 }
