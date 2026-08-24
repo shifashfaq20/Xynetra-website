@@ -452,7 +452,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export type AuthState = { error?: string; message?: string; userId?: string };
+export type AuthState = {
+  error?: string;
+  message?: string;
+  userId?: string;
+  /** true when user must click the email link before login */
+  needsEmailConfirmation?: boolean;
+};
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://xynetra.com";
 
@@ -487,6 +493,16 @@ function str(fd: FormData, key: string): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
+function isUnconfirmedLoginError(error: any): boolean {
+  const msg = String(error?.message ?? "").toLowerCase();
+  const code = String(error?.code ?? "").toLowerCase();
+  return (
+    code === "email_not_confirmed" ||
+    msg.includes("email not confirmed") ||
+    msg.includes("not confirmed")
+  );
+}
+
 export async function signUp(
   _prev: AuthState | undefined,
   formData: FormData
@@ -503,6 +519,7 @@ export async function signUp(
     const billingRegion = ["international", "pakistan"].includes(rawRegion)
       ? rawRegion
       : "international";
+    const next = str(formData, "next") || "/app/checkout";
 
     if (!email) return { error: "Work email is required." };
     if (!password) return { error: "Password is required." };
@@ -510,6 +527,8 @@ export async function signUp(
 
     const supabase = await createClient();
 
+    // After Confirm email is ON in Supabase, signUp returns user without session
+    // and sends the confirmation email automatically.
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -519,7 +538,7 @@ export async function signUp(
           business_name: businessName,
           billing_region: billingRegion,
         },
-        emailRedirectTo: `${APP_URL}/auth/callback?next=/app/checkout`,
+        emailRedirectTo: `${APP_URL}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
 
@@ -528,15 +547,28 @@ export async function signUp(
     }
     if (!data.user) return { error: "No user returned from Supabase." };
 
-    // NOTE: `profiles` and `clients` rows are created by the
-    // `on_auth_user_created` trigger. Do NOT upsert here — with email
-    // confirmation enabled there is no session yet, so RLS would reject it.
+    // NOTE: profiles + clients are created by on_auth_user_created trigger.
+    // Do NOT upsert here — with email confirmation there is often no session yet (RLS).
 
     revalidatePath("/", "layout");
 
-    return data.session
-      ? { message: "Account created.", userId: data.user.id }
-      : { message: "Account created. Check your email to confirm.", userId: data.user.id };
+    // If Confirm email is ON → no session → user must confirm first.
+    // If Confirm email is OFF → session exists → they can continue immediately.
+    if (!data.session) {
+      return {
+        message:
+          "Account created. Check your email and click the confirmation link before logging in.",
+        userId: data.user.id,
+        needsEmailConfirmation: true,
+      };
+    }
+
+    // Session present (confirm email disabled in project settings)
+    return {
+      message: "Account created. You can continue.",
+      userId: data.user.id,
+      needsEmailConfirmation: false,
+    };
   } catch (err: any) {
     console.error("[XYNETRA] signUp.threw", {
       message: err?.message,
@@ -547,8 +579,8 @@ export async function signUp(
       error: err?.cause?.code
         ? `Could not reach the auth service (${err.cause.code}).`
         : err?.message && err.message !== "{}"
-        ? err.message
-        : "Server error during signup.",
+          ? err.message
+          : "Server error during signup.",
     };
   }
 }
@@ -569,6 +601,13 @@ export async function signIn(
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
+      if (isUnconfirmedLoginError(error)) {
+        return {
+          error:
+            "Please confirm your email before logging in. Check your inbox for the confirmation link.",
+          needsEmailConfirmation: true,
+        };
+      }
       return { error: authMessage("signIn.auth", error, "Invalid email or password.") };
     }
 
@@ -576,7 +615,10 @@ export async function signIn(
     return { message: "Login successful.", userId: data.user?.id };
   } catch (err: any) {
     console.error("[XYNETRA] signIn.threw", { message: err?.message, code: err?.cause?.code });
-    return { error: err?.message && err.message !== "{}" ? err.message : "Server error during login." };
+    return {
+      error:
+        err?.message && err.message !== "{}" ? err.message : "Server error during login.",
+    };
   }
 }
 
@@ -593,7 +635,7 @@ export async function requestPasswordReset(
 
     const supabase = await createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${APP_URL}/auth/callback?next=/reset-password/update`,
+      redirectTo: `${APP_URL}/auth/callback?next=${encodeURIComponent("/reset-password/update")}`,
     });
 
     // Do not leak whether the address exists.
