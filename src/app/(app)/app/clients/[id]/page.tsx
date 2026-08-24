@@ -167,12 +167,16 @@
 
 
 
+
 // src/app/(app)/app/clients/[id]/page.tsx
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireAdmin } from "@/lib/admin/guard";
-import { getAdminStatsForClient, getClientStatsForPeriod } from "@/lib/admin/actions";
+import {
+  getAdminStatsForClient,
+  getClientStatsForPeriod,
+} from "@/lib/admin/actions";
 import type { ClientStats } from "@/lib/admin/roles";
 import type { WaitlistEntry } from "@/lib/dashboard/action";
 import { StatsCards } from "@/components/dashbaord/StatsCards";
@@ -227,10 +231,8 @@ async function safeRows<T>(
 export default async function ClientPreviewPage({ params }: PageProps) {
   const { id } = await params;
 
-  // Redirects (never throws) if the viewer is not an admin.
   await requireAdmin();
 
-  // A malformed id would make Postgres raise 22P02 rather than 404.
   if (!UUID_RE.test(id)) notFound();
 
   const svc = createServiceClient();
@@ -250,13 +252,13 @@ export default async function ClientPreviewPage({ params }: PageProps) {
   }
   if (!profile) notFound();
 
-  // Auth lookup is non-fatal — a missing email should not 500 the page.
   let email = "—";
   try {
     const { data: authUser, error: authError } =
       await svc.auth.admin.getUserById(id);
-    if (authError)
+    if (authError) {
       console.error("[XYNETRA] clients/[id] getUserById", authError.message);
+    }
     email = authUser?.user?.email ?? "—";
   } catch (e: any) {
     console.error(
@@ -265,7 +267,6 @@ export default async function ClientPreviewPage({ params }: PageProps) {
     );
   }
 
-  // Read-only: auto-expire setting for this client (for WaitlistManager UI)
   let autoExpire = true;
   try {
     const { data: clientRow } = await svc
@@ -320,8 +321,9 @@ export default async function ClientPreviewPage({ params }: PageProps) {
   ]);
 
   const stats: ClientStats = statsRes.ok ? statsRes.data : EMPTY_STATS;
-  if (!statsRes.ok)
+  if (!statsRes.ok) {
     console.error("[XYNETRA] clients/[id] stats", statsRes.error);
+  }
 
   return (
     <div className="space-y-8">
@@ -347,10 +349,6 @@ export default async function ClientPreviewPage({ params }: PageProps) {
         </div>
       )}
 
-      {/*
-        `.bind(null, id)` creates a real bound Server Action.
-        An inline arrow is NOT serializable if StatsCards is a Client Component.
-      */}
       <StatsCards
         initialStats={stats}
         periodFetcher={getClientStatsForPeriod.bind(null, id)}
