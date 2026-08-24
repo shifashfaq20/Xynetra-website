@@ -182,9 +182,13 @@ export async function createClientAccount(input: {
   try {
     const svc = createServiceClient();
 
+    // email_confirm: true → Auth sets email_confirmed_at only.
+    // Never set confirmed_at (generated column: LEAST(email_confirmed_at, phone_confirmed_at)).
+    // The old DB trigger auto_confirm_new_users() UPDATEd confirmed_at and caused 428C9.
     const { data, error } = await svc.auth.admin.createUser({
       email,
       password: input.password,
+      email_confirm: true,
       user_metadata: {
         full_name: business_name,
         business_name,
@@ -205,6 +209,7 @@ export async function createClientAccount(input: {
 
     const stamp = new Date().toISOString();
 
+    // Upsert in case handle_new_user trigger already inserted rows
     const { error: pErr } = await svc.from("profiles").upsert(
       {
         id: userId,
